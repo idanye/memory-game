@@ -71,8 +71,8 @@ def run_game():
     font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
 
     # Define buttons
-    reset_button_rect = pygame.Rect(10, 10, 100, 30)
-    play_again_button_rect = pygame.Rect(screen_width - 110, 10, 100, 30)
+    reset_button_rect = pygame.Rect(10, 10, 80, 30)
+    play_again_button_rect = pygame.Rect(screen_width - 90, 10, 80, 30)
 
     # Main game loop
     running = True
@@ -81,13 +81,14 @@ def run_game():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if reset_button_rect.collidepoint(event.pos) or (
-                        game_over and play_again_button_rect.collidepoint(event.pos)):
+                mouse_x, mouse_y = event.pos
+                if reset_button_rect.collidepoint(mouse_x, mouse_y) or (
+                        game_over and play_again_button_rect.collidepoint(mouse_x, mouse_y)):
                     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
+                    elapsed_time = 0  # Reset the timer for a new game
                 elif not game_over:
-                    x, y = event.pos
-                    if y > info_bar_height:  # Only proceed if the click is within the game area
-                        col, row = x // card_width, (y - info_bar_height) // card_height
+                    if mouse_y > info_bar_height:  # Only proceed if the click is within the game area
+                        col, row = mouse_x // card_width, (mouse_y - info_bar_height) // card_height
                         if row < rows and col < cols:  # Check if the click is within the grid bounds
                             index = row * cols + col
                             if 0 <= index < len(cards):  # Ensure the index is within the range of cards
