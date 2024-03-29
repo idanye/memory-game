@@ -72,7 +72,7 @@ def run_game():
 
     # Define buttons
     reset_button_rect = pygame.Rect(10, 10, 80, 30)
-    play_again_button_rect = pygame.Rect(screen_width - 90, 10, 80, 30)
+    play_again_button_rect = pygame.Rect(screen_width - 140, 10, 80, 30)
 
     # Main game loop
     running = True
