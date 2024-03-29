@@ -1,5 +1,6 @@
 import pygame
 import random
+import sys
 
 
 def initialize_cards(colors, cols, rows):
@@ -25,16 +26,20 @@ def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_he
             pygame.draw.rect(screen, hidden_color, (x, y, card_width, card_height))
 
 
-def check_for_match(cards, selected_cards, matched_cards):
+def check_for_match(cards, selected_cards, matched_cards, match_sound):
     if len(selected_cards) == 2:
         index1, index2 = selected_cards
         if cards[index1] == cards[index2]:
             matched_cards.extend([index1, index2])
+            match_sound.play()  # Play sound on match
         selected_cards.clear()
 
 
 def run_game():
     pygame.init()
+    pygame.mixer.init()
+    pygame.font.init()
+    match_sound = pygame.mixer.Sound('match.wav')
 
     # Game settings
     screen_width, screen_height = 640, 480
@@ -50,6 +55,12 @@ def run_game():
     selected_cards, matched_cards = [], []
     game_over = False
 
+    font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
+
+    # Timer setup
+    start_time = pygame.time.get_ticks()
+
+    # Main game loop
     running = True
     while running:
         for event in pygame.event.get():
@@ -63,7 +74,12 @@ def run_game():
                     selected_cards.append(index)
                 if len(selected_cards) == 2:
                     pygame.time.wait(500)
-                    check_for_match(cards, selected_cards, matched_cards)
+                    check_for_match(cards, selected_cards, matched_cards, match_sound)
+
+        current_time = pygame.time.get_ticks()
+        elapsed_time = (current_time - start_time) // 1000
+        timer_surface = font.render(f'{elapsed_time // 60}:{elapsed_time % 60:02}', True, (0, 0, 0))
+        screen.blit(timer_surface, (screen_width - 100, 10))
 
         screen.fill(bg_color)
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color)
