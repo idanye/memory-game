@@ -13,12 +13,13 @@ def initialize_cards(colors, cols, rows):
     return cards
 
 
-def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color):
+def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+               info_bar_height):
     for i, card_color in enumerate(cards):
         row = i // cols
         col = i % cols
         x = col * card_width
-        y = row * card_height
+        y = row * card_height + info_bar_height  # Offset the y position
 
         if i in matched_cards or i in selected_cards:
             pygame.draw.rect(screen, card_color, (x, y, card_width, card_height))
@@ -43,8 +44,10 @@ def run_game():
 
     # Game settings
     screen_width, screen_height = 640, 480
+    info_bar_height = 50  # Height of the information bar at the top
     screen = pygame.display.set_mode((screen_width, screen_height))
     bg_color = (255, 255, 255)
+    info_bar_color = (230, 230, 230)  # A light grey color for the information bar
     hidden_color = (0, 0, 0)
     colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
               (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0)]
@@ -67,22 +70,31 @@ def run_game():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                x, y = pygame.mouse.get_pos()
-                col, row = x // card_width, y // card_height
-                index = row * cols + col
-                if index not in selected_cards and index not in matched_cards:
-                    selected_cards.append(index)
-                if len(selected_cards) == 2:
-                    pygame.time.wait(500)
-                    check_for_match(cards, selected_cards, matched_cards, match_sound)
-
-        current_time = pygame.time.get_ticks()
-        elapsed_time = (current_time - start_time) // 1000
-        timer_surface = font.render(f'{elapsed_time // 60}:{elapsed_time % 60:02}', True, (0, 0, 0))
-        screen.blit(timer_surface, (screen_width - 100, 10))
+                x, y = event.pos
+                if y > info_bar_height: # Only proceed if the click is within the game area
+                    col, row = x // card_width, y // card_height
+                    index = row * cols + col
+                    if index not in selected_cards and index not in matched_cards:
+                        selected_cards.append(index)
+                    if len(selected_cards) == 2:
+                        pygame.time.wait(500)
+                        check_for_match(cards, selected_cards, matched_cards, match_sound)
 
         screen.fill(bg_color)
-        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color)
+
+        # Draw the information bar at the top
+        pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
+
+        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+                   info_bar_height)
+
+        # Timer logic and rendering in the info bar
+        current_time = pygame.time.get_ticks()
+        elapsed_time = (current_time - start_time) // 1000
+        timer_minutes = elapsed_time // 60
+        timer_seconds = elapsed_time % 60
+        timer_surface = font.render(f'{timer_minutes:02}:{timer_seconds:02}', True, (0, 0, 0))
+        screen.blit(timer_surface, (10, (info_bar_height - timer_surface.get_height()) // 2))
 
         if len(matched_cards) == len(cards) and not game_over:
             game_over = True
