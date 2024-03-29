@@ -103,9 +103,15 @@ def run_game():
 
         # Draw the information bar at the top
         pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
+
+        # Draw reset button
+        pygame.draw.rect(screen, button_color, reset_button_rect)
         reset_text = font.render('Reset', True, text_color)
         screen.blit(reset_text, (reset_button_rect.x + 5, reset_button_rect.y + 5))
-        play_again_text = font.render('Play Again', True, text_color)
+
+        # Draw cards
+        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+                   info_bar_height)
 
         if game_over:
             # Display 'Well done!' message
@@ -129,7 +135,26 @@ def run_game():
             timer_surface = font.render(f'{timer_minutes:02}:{timer_seconds:02}', True, text_color)
             screen.blit(timer_surface, (110, (info_bar_height - timer_surface.get_height()) // 2))
 
+        # Draw 'Well done!' message and 'Play Again' button only if the game is over
+        if game_over:
+            well_done_surface = font.render('Well done!', True, text_color)
+            screen.blit(well_done_surface, (screen_width // 2 - well_done_surface.get_width() // 2,
+                                            (info_bar_height - well_done_surface.get_height()) // 2))
+
+            # Draw and display 'Play Again' button
+            pygame.draw.rect(screen, button_color, play_again_button_rect)
+            screen.blit(play_again_text, (play_again_button_rect.x + 5, play_again_button_rect.y + 5))
+
+        # Update the display
         pygame.display.flip()
+
+        # Check for game over and reset game if necessary
+        if game_over:
+            for event in pygame.event.get():
+                if event.type == pygame.MOUSEBUTTONDOWN and play_again_button_rect.collidepoint(event.pos):
+                    # Reset the game if the 'Play Again' button is clicked
+                    cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
+                    play_again_text = font.render('Play Again', True, text_color)  # Re-initialize text after reset
 
     pygame.quit()
 
