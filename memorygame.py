@@ -86,30 +86,30 @@ def run_game():
 
     font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
 
-    # Calculate position for the title text above the buttons
-    title_text = "Pick the game player's mode"
+    title_text = "Pick the game player's mode:"
     title_surface = font.render(title_text, True, text_color)
-    title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 2 - 50))
+    title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 2 - 60))
 
     current_player = 1
     player_turns = {1: "Player 1's turn", 2: "Player 2's turn"}
     player_scores = {1: 0, 2: 0}
+
+    # Create turn indicator rectangle here
     turn_indicator = font.render('', True, text_color, info_bar_color)
-    turn_indicator_rect = pygame.Rect(10, 5, 200, info_bar_height - 10)
+    turn_indicator_rect = turn_indicator.get_rect(topleft=(10, 5))
 
-    # Player selection buttons positioning
-    button_width, button_height = 100, 30
-    button_gap = 10  # Gap between the two buttons
-
-    # Calculate total width of both buttons including the gap to properly center them
+    button_width, button_height = 150, 50
+    button_gap = 10
     total_buttons_width = button_width * 2 + button_gap
 
-    # Calculate the left position of the first button so both buttons are centered
     one_player_button_left = (screen_width - total_buttons_width) // 2
     two_player_button_left = one_player_button_left + button_width + button_gap
 
-    one_player_button = pygame.Rect(one_player_button_left, screen_height // 2, button_width, button_height)
-    two_player_button = pygame.Rect(two_player_button_left, screen_height // 2, button_width, button_height)
+    # Define the buttons with new sizes
+    one_player_button = pygame.Rect(one_player_button_left, screen_height // 2 - button_height // 2, button_width,
+                                    button_height)
+    two_player_button = pygame.Rect(two_player_button_left, screen_height // 2 - button_height // 2, button_width,
+                                    button_height)
 
     one_player_text = font.render('1 Player', True, text_color)
     two_player_text = font.render('2 Players', True, text_color)
@@ -117,26 +117,29 @@ def run_game():
     num_players = None
 
     while not num_players:
+        screen.fill(bg_color)
+        screen.blit(title_surface, title_rect.topleft)
+
+        pygame.draw.rect(screen, button_color, one_player_button)
+        pygame.draw.rect(screen, button_color, two_player_button)
+
+        screen.blit(one_player_text, one_player_text.get_rect(center=one_player_button.center))
+        screen.blit(two_player_text, two_player_text.get_rect(center=two_player_button.center))
+
+        pygame.display.flip()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if one_player_button.collidepoint(event.pos):
+                mouse_x, mouse_y = event.pos
+                if one_player_button.collidepoint((mouse_x, mouse_y)):
                     num_players = 1
-                elif two_player_button.collidepoint(event.pos):
+                    break  # Break out of the for loop to proceed
+                elif two_player_button.collidepoint((mouse_x, mouse_y)):
                     num_players = 2
-
-            # Draw the title text above the player selection buttons
-            screen.blit(title_surface, title_rect)
-
-            # Draw the player selection buttons (this code remains the same)
-            pygame.draw.rect(screen, button_color, one_player_button)
-            pygame.draw.rect(screen, button_color, two_player_button)
-            screen.blit(one_player_text, (one_player_button.x + 5, one_player_button.y + 5))
-            screen.blit(two_player_text, (two_player_button.x + 5, two_player_button.y + 5))
-
-            pygame.display.flip()
+                    break  # Break out of the for loop to proceed
 
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
     difficulty = None
@@ -189,6 +192,7 @@ def run_game():
         # Player turn indicator
         if num_players and not play_again_visible:
             turn_indicator = font.render(player_turns[current_player], True, text_color, info_bar_color)
+            turn_indicator_rect = turn_indicator.get_rect(topleft=(10, 5))
             screen.blit(turn_indicator, turn_indicator_rect)
 
         for event in pygame.event.get():
@@ -196,7 +200,8 @@ def run_game():
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN and not play_again_visible:
                 if reset_button_rect.collidepoint(event.pos):
-                    cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
+                    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
+                        colors, cols, rows, num_players)
                     current_player = 1
                 else:
                     mouse_x, mouse_y = event.pos
