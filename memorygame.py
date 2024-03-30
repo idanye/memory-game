@@ -3,10 +3,6 @@ import random
 
 
 def reset_game(colors, cols, rows, num_players):
-    """
-    Resets the game by preparing a new set of cards, shuffling them,
-    and resetting game state variables.
-    """
     cards = colors[:cols * rows // 2] * 2
     random.shuffle(cards)
 
@@ -159,8 +155,7 @@ def run_game():
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
     card_width, card_height = screen_width // cols, game_area_height // rows
 
-    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows,
-                                                                                                     num_players)
+    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows, num_players)
 
     # Define button sizes and positions
     button_padding_horizontal = 10
@@ -184,7 +179,7 @@ def run_game():
     running = True
     end_time = None
     play_again_visible = False
-    current_player_turn = 1
+    # current_player_turn = 1
 
     while running:
         screen.fill(bg_color)
@@ -193,9 +188,7 @@ def run_game():
 
         if num_players == 2:
             display_text(screen, f"Player 1: {scores[1]} - Player 2: {scores[2]}", font, text_color, (10, 10))
-            display_text(screen, f"Player {current_player_turn}'s Turn", font, text_color, (10, 30))
-        else:
-            display_text(screen, "Your Turn", font, text_color, (10, 5))
+            display_text(screen, f"Player {current_player}'s Turn", font, text_color, (screen_width - 220, 10))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -204,10 +197,10 @@ def run_game():
                 mouse_x, mouse_y = event.pos
                 if play_again_visible and play_again_button_rect.collidepoint(mouse_x, mouse_y):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)  # CHANGE
-                    play_again_visible = False  # CHANGE
-                    continue  # CHANGE: Skip the rest of the loop to immediately start a new game
-
+                        colors, cols, rows, num_players)
+                    play_again_visible = False
+                    current_player = 1
+                    continue
                 if not play_again_visible and reset_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
                         colors, cols, rows, num_players)
@@ -221,16 +214,11 @@ def run_game():
                         if 0 <= index < len(cards) and index not in selected_cards + matched_cards:
                             selected_cards.append(index)
                             if len(selected_cards) == 2:
-                                pygame.time.wait(200)
-                                if check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
-                                                   current_player):
-                                    if num_players == 2:
-                                        # Optionally, display some feedback that the current player scored
-                                        pass
-                                    else:
-                                        # In 2-player mode, switch turns if no match is found
-                                        if num_players == 2:
-                                            current_player_turn = 2 if current_player_turn == 1 else 1  # CHANGE: Switch current player turn
+                                pygame.time.wait(500)
+                                match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
+                                                        current_player)
+                                if not match and num_players == 2:
+                                    current_player = 2 if current_player == 1 else 1  # Change
 
         screen.fill(bg_color)
 
@@ -244,19 +232,14 @@ def run_game():
 
         if not game_over:
             elapsed_time = (current_time - start_time) // 1000
-
-            if len(matched_cards) == len(cards):  # CHANGE: Check if all cards have been matched
-                game_over = True
-                play_again_visible = True
-                end_time = current_time
-            else:
-                if num_players == 2:
-                    current_player = 2 if current_player == 1 else 1
         else:
-            if end_time is not None:
-                elapsed_time = (end_time - start_time) // 1000
-            else:
-                elapsed_time = (current_time - start_time) // 1000  # Fallback if end_time is somehow still None
+            if end_time is None:  # Only set end_time once
+                end_time = current_time
+            elapsed_time = (end_time - start_time) // 1000
+
+        if len(matched_cards) == len(cards) and not game_over:  # Check if all cards have been matched
+            game_over = True
+            play_again_visible = True
 
         timer_minutes = elapsed_time // 60
         timer_seconds = elapsed_time % 60
@@ -279,13 +262,14 @@ def run_game():
             play_again_visible = True
             message_box_width, message_box_height = 200, 100
             message_box_x, message_box_y = (screen_width - message_box_width) // 2, (
-                    screen_height - message_box_height) // 2
+                        screen_height - message_box_height) // 2
+
             pygame.draw.rect(screen, (100, 100, 100),
                              (message_box_x, message_box_y, message_box_width, message_box_height))
-
             well_done_surface = font.render('Well done!', True, text_color)
             well_done_x = message_box_x + (message_box_width - well_done_surface.get_width()) // 2
             well_done_y = message_box_y + (message_box_height - well_done_surface.get_height()) // 2
+
             screen.blit(well_done_surface, (well_done_x, well_done_y))
 
         pygame.display.flip()
