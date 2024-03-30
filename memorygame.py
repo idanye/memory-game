@@ -83,7 +83,7 @@ def run_game():
         (0, 0, 64), (64, 64, 0), (64, 0, 64), (0, 64, 64)
     ]
 
-    font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
+    font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
 
     # Difficulty selection screen
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -145,7 +145,7 @@ def run_game():
         # Draw reset button
         pygame.draw.rect(screen, button_color, reset_button_rect)
         reset_text = font.render('Reset', True, text_color)
-        screen.blit(reset_text, (reset_button_rect.x + 5, reset_button_rect.y + 5))
+        screen.blit(reset_text, (reset_button_rect.x + 10, reset_button_rect.y))
 
         # Timer logic and rendering in the info bar
         if not game_over:
