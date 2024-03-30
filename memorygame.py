@@ -115,7 +115,7 @@ def run_game():
 
     # Game settings
     screen_width, screen_height = 640, 480
-    info_bar_height = 50  # Height of the information bar at the top
+    info_bar_height = 100  # Height of the information bar at the top
     game_area_height = screen_height - info_bar_height  # Adjusted height for the game area
     screen = pygame.display.set_mode((screen_width, screen_height))
     bg_color = (255, 255, 255)
@@ -165,30 +165,25 @@ def run_game():
     reset_text = font.render('Reset', True, text_color)
     reset_button_width = reset_text.get_width() + (2 * button_padding_horizontal)
     reset_button_height = font.size('Test')[1] + (2 * button_padding_vertical)
-    reset_button_rect = pygame.Rect(10, (info_bar_height - reset_button_height) // 2, reset_button_width,
-                                    reset_button_height)
+    reset_button_rect = pygame.Rect(10, (info_bar_height - reset_button_height) // 2 + 25, reset_button_width,
+                                    reset_button_height)  # Adjusted position
 
     play_again_text = font.render('Play Again', True, text_color)
     play_again_button_width = play_again_text.get_width() + (2 * button_padding_horizontal)
     play_again_button_height = reset_button_height
     play_again_button_rect = pygame.Rect(screen_width - play_again_button_width - 10,
-                                         (info_bar_height - play_again_button_height) // 2, play_again_button_width,
-                                         play_again_button_height)
+                                         (info_bar_height - play_again_button_height) // 2 + 25,
+                                         play_again_button_width, play_again_button_height)  # Adjusted position
 
     # Main game loop
     running = True
     end_time = None
     play_again_visible = False
-    # current_player_turn = 1
 
     while running:
         screen.fill(bg_color)
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
                    info_bar_height)
-
-        if num_players == 2:
-            display_text(screen, f"Player 1: {scores[1]} - Player 2: {scores[2]}", font, text_color, (10, 10))
-            display_text(screen, f"Player {current_player}'s Turn", font, text_color, (screen_width - 220, 10))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -199,12 +194,10 @@ def run_game():
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
                         colors, cols, rows, num_players)
                     play_again_visible = False
-                    current_player = 1
                     continue
                 if not play_again_visible and reset_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
                         colors, cols, rows, num_players)
-                    current_player = 1
                 elif not play_again_visible:
                     if mouse_y > info_bar_height:
                         col = mouse_x // card_width
@@ -220,8 +213,8 @@ def run_game():
                                 if not match and num_players == 2:
                                     current_player = 2 if current_player == 1 else 1  # Change
 
-        screen.fill(bg_color)
 
+        # Draw UI elements like info bar, reset button, and timer
         pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
         pygame.draw.rect(screen, button_color, reset_button_rect)
         screen.blit(reset_text,
@@ -245,7 +238,7 @@ def run_game():
         timer_seconds = elapsed_time % 60
         timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
         timer_surface = font.render(timer_text, True, text_color, info_bar_color)
-        timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2)))
+        timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2) + 25))
         screen.blit(timer_surface, timer_rect)
 
         if play_again_visible:
@@ -253,10 +246,6 @@ def run_game():
             screen.blit(play_again_text, (
                 play_again_button_rect.x + button_padding_horizontal,
                 play_again_button_rect.y + button_padding_vertical))
-
-        # Draw cards
-        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-                   info_bar_height)
 
         if game_over:
             play_again_visible = True
@@ -271,6 +260,11 @@ def run_game():
             well_done_y = message_box_y + (message_box_height - well_done_surface.get_height()) // 2
 
             screen.blit(well_done_surface, (well_done_x, well_done_y))
+
+        # Display scores and current player's turn for 2 Player mode
+        if num_players == 2:
+            display_text(screen, f"Player 1: {scores[1]} - Player 2: {scores[2]}", font, text_color, (10, 10))
+            display_text(screen, f"Player {current_player}'s Turn", font, text_color, (screen_width - 220, 10))
 
         pygame.display.flip()
 
