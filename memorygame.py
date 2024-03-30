@@ -170,18 +170,22 @@ def run_game():
         if play_again_visible:
             pygame.draw.rect(screen, button_color, play_again_button_rect)
             screen.blit(play_again_text, (
-            play_again_button_rect.x + button_padding_horizontal, play_again_button_rect.y + button_padding_vertical))
+                play_again_button_rect.x + button_padding_horizontal,
+                play_again_button_rect.y + button_padding_vertical))
 
         # Timer logic and rendering in the info bar
+        current_time = pygame.time.get_ticks()
+
         if not game_over:
-            current_time = pygame.time.get_ticks()
             elapsed_time = (current_time - start_time) // 1000
-            timer_minutes = elapsed_time // 60
-            timer_seconds = elapsed_time % 60
-            timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
-            timer_surface = font.render(timer_text, True, text_color, info_bar_color)
-            timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2)))
-            screen.blit(timer_surface, timer_rect)
+        else:
+            elapsed_time = (end_time - start_time) // 1000  # Use end_time if game is over
+        timer_minutes = elapsed_time // 60
+        timer_seconds = elapsed_time % 60
+        timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
+        timer_surface = font.render(timer_text, True, text_color, info_bar_color)
+        timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2)))
+        screen.blit(timer_surface, timer_rect)
 
         # Draw cards
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
@@ -191,7 +195,7 @@ def run_game():
             play_again_visible = True
             message_box_width, message_box_height = 200, 100
             message_box_x, message_box_y = (screen_width - message_box_width) // 2, (
-                        screen_height - message_box_height) // 2
+                    screen_height - message_box_height) // 2
             pygame.draw.rect(screen, (100, 100, 100),
                              (message_box_x, message_box_y, message_box_width, message_box_height))
 
