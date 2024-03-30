@@ -47,7 +47,7 @@ def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, c
     return match
 
 
-def display_difficulty_selection(screen, font, text_color):
+def display_difficulty_selection(font, text_color):
     difficulties = ["Easy", "Medium", "Hard"]
     difficulty_rects = []
 
@@ -90,7 +90,6 @@ def run_game():
     title_surface = font.render(title_text, True, text_color)
     title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 2 - 60))
 
-    current_player = 1
     player_turns = {1: "Player 1's turn", 2: "Player 2's turn"}
     player_scores = {1: 0, 2: 0}
 
@@ -100,14 +99,13 @@ def run_game():
 
     button_width, button_height = 150, 50
     button_gap = 10
-    total_buttons_width = button_width * 2 + button_gap
+    total_buttons_width = (button_width * 2) + button_gap
 
-    one_player_button_left = (screen_width - total_buttons_width) // 2
-    two_player_button_left = one_player_button_left + button_width + button_gap
-
-    # Define the buttons with new sizes
+    one_player_button_left = (screen_width // 2) - (total_buttons_width // 2)
     one_player_button = pygame.Rect(one_player_button_left, screen_height // 2 - button_height // 2, button_width,
                                     button_height)
+
+    two_player_button_left = one_player_button_left + button_width + button_gap
     two_player_button = pygame.Rect(two_player_button_left, screen_height // 2 - button_height // 2, button_width,
                                     button_height)
 
@@ -133,15 +131,15 @@ def run_game():
                 pygame.quit()
                 return
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_x, mouse_y = event.pos
-                if one_player_button.collidepoint((mouse_x, mouse_y)):
+                if one_player_button.collidepoint(event.pos):
                     num_players = 1
-                    break  # Break out of the for loop to proceed
-                elif two_player_button.collidepoint((mouse_x, mouse_y)):
+                    break
+                elif two_player_button.collidepoint(event.pos):
                     num_players = 2
-                    break  # Break out of the for loop to proceed
+                    break
 
-    difficulty_rects = display_difficulty_selection(screen, font, text_color)
+    # Once the number of players is chosen, proceed to difficulty selection
+    difficulty_rects = display_difficulty_selection(font, text_color)
     difficulty = None
 
     while difficulty is None:
@@ -153,13 +151,15 @@ def run_game():
                 for i, rect in enumerate(difficulty_rects):
                     if rect.collidepoint(event.pos):
                         difficulty = ["Easy", "Medium", "Hard"][i]
+                        break
+        if difficulty:
+            break
 
     # Adjust game settings based on difficulty
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
     card_width, card_height = screen_width // cols, game_area_height // rows
 
-    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows,
-                                                                                                     num_players)
+    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows, num_players)
 
     # Define button sizes and positions
     button_padding_horizontal = 10
@@ -246,6 +246,17 @@ def run_game():
 
         if not game_over:
             elapsed_time = (current_time - start_time) // 1000
+
+            if check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player):
+                if num_players == 2:
+                    # If there's a match, current player gets another turn
+                    pass
+                else:
+                    game_over = True  # Single-player mode can end the game
+            else:
+                if num_players == 2:
+                    # Switch turns if no match
+                    current_player = 2 if current_player == 1 else 1
         else:
             elapsed_time = (end_time - start_time) // 1000  # Use end_time if game is over
 
