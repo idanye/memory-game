@@ -2,21 +2,15 @@ import pygame
 import random
 
 
-def reset_game(colors, cols, rows):
+def reset_game(colors, cols, rows, num_players):
     """
     Resets the game by preparing a new set of cards, shuffling them,
     and resetting game state variables.
     """
-    num_pairs = cols * rows // 2
-    cards = colors[:num_pairs] * 2
-
+    cards = colors[:cols * rows // 2] * 2
     random.shuffle(cards)
-    selected_cards = []
-    matched_cards = []
-    game_over = False
-    start_time = pygame.time.get_ticks()
 
-    return cards, selected_cards, matched_cards, game_over, start_time
+    return cards, [], [], False, pygame.time.get_ticks(), 1, [0] * (num_players + 1)
 
 
 def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
@@ -38,28 +32,29 @@ def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_he
         pygame.draw.rect(screen, (0, 0, 0), rect, 3)  # Draw card border
 
 
-def check_for_match(cards, selected_cards, matched_cards, match_sound):
-    if len(selected_cards) == 2:
-        index1, index2 = selected_cards
+def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player):
+    match = False
 
-        if cards[index1] == cards[index2]:
-            matched_cards.extend([index1, index2])
-            match_sound.play()  # Play sound on match
+    if len(selected_cards) == 2:
+        if cards[selected_cards[0]] == cards[selected_cards[1]]:
+            matched_cards.extend(selected_cards)
+            scores[current_player] += 1
+            match_sound.play()
+            match = True
 
         selected_cards.clear()
 
+    return match
+
 
 def display_difficulty_selection(screen, font, text_color):
-    screen.fill((255, 255, 255))  # Fill the screen with white
     difficulties = ["Easy", "Medium", "Hard"]
     difficulty_rects = []
 
     for index, difficulty in enumerate(difficulties):
         text = font.render(difficulty, True, text_color)
         rect = text.get_rect(center=(320, 120 + index * 60))
-        screen.blit(text, rect)
         difficulty_rects.append(rect)
-    pygame.display.flip()
 
     return difficulty_rects
 
@@ -91,7 +86,58 @@ def run_game():
 
     font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
 
-    # Difficulty selection screen
+    # Calculate position for the title text above the buttons
+    title_text = "Pick the game player's mode"
+    title_surface = font.render(title_text, True, text_color)
+    title_rect = title_surface.get_rect(center=(screen_width // 2, screen_height // 2 - 50))
+
+    current_player = 1
+    player_turns = {1: "Player 1's turn", 2: "Player 2's turn"}
+    player_scores = {1: 0, 2: 0}
+    turn_indicator = font.render('', True, text_color, info_bar_color)
+    turn_indicator_rect = pygame.Rect(10, 5, 200, info_bar_height - 10)
+
+    # Player selection buttons positioning
+    button_width, button_height = 100, 30
+    button_gap = 10  # Gap between the two buttons
+
+    # Calculate total width of both buttons including the gap to properly center them
+    total_buttons_width = button_width * 2 + button_gap
+
+    # Calculate the left position of the first button so both buttons are centered
+    one_player_button_left = (screen_width - total_buttons_width) // 2
+    two_player_button_left = one_player_button_left + button_width + button_gap
+
+    one_player_button = pygame.Rect(one_player_button_left, screen_height // 2, button_width, button_height)
+    two_player_button = pygame.Rect(two_player_button_left, screen_height // 2, button_width, button_height)
+
+    one_player_text = font.render('1 Player', True, text_color)
+    two_player_text = font.render('2 Players', True, text_color)
+
+    num_players = None
+
+    while not num_players:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if one_player_button.collidepoint(event.pos):
+                    num_players = 1
+                elif two_player_button.collidepoint(event.pos):
+                    num_players = 2
+
+            # Draw the title text above the player selection buttons
+            screen.blit(title_surface, title_rect)
+
+            # Draw the player selection buttons (this code remains the same)
+            pygame.draw.rect(screen, button_color, one_player_button)
+            pygame.draw.rect(screen, button_color, two_player_button)
+            screen.blit(one_player_text, (one_player_button.x + 5, one_player_button.y + 5))
+            screen.blit(two_player_text, (two_player_button.x + 5, two_player_button.y + 5))
+
+            pygame.display.flip()
+
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
     difficulty = None
 
@@ -104,13 +150,13 @@ def run_game():
                 for i, rect in enumerate(difficulty_rects):
                     if rect.collidepoint(event.pos):
                         difficulty = ["Easy", "Medium", "Hard"][i]
-        pygame.time.wait(100)
 
     # Adjust game settings based on difficulty
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
     card_width, card_height = screen_width // cols, game_area_height // rows
 
-    cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
+    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows,
+                                                                                                     num_players)
 
     # Define button sizes and positions
     button_padding_horizontal = 10
@@ -136,37 +182,48 @@ def run_game():
     play_again_visible = False
 
     while running:
+        screen.fill(bg_color)
+        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+                   info_bar_height)
+
+        # Player turn indicator
+        if num_players and not play_again_visible:
+            turn_indicator = font.render(player_turns[current_player], True, text_color, info_bar_color)
+            screen.blit(turn_indicator, turn_indicator_rect)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = event.pos
-                if reset_button_rect.collidepoint(mouse_pos) and not play_again_visible:
-                    # Reset game logic goes here
+            elif event.type == pygame.MOUSEBUTTONDOWN and not play_again_visible:
+                if reset_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
-                    game_over = False
-                elif play_again_button_rect.collidepoint(mouse_pos) and play_again_visible:
-                    # Play again logic goes here
-                    cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
-                    game_over = False
-                    play_again_visible = False
-                elif not game_over:
-                    x, y = event.pos
-                    if y > info_bar_height:
-                        col, row = x // card_width, (y - info_bar_height) // card_height
-                        if row < rows and col < cols:
-                            index = row * cols + col
-                            if 0 <= index < len(cards):
-                                if index not in selected_cards and index not in matched_cards:
-                                    selected_cards.append(index)
-                                if len(selected_cards) == 2:
-                                    pygame.time.wait(200)
-                                    check_for_match(cards, selected_cards, matched_cards, match_sound)
-                                    if len(matched_cards) == len(cards):
-                                        game_over = True
-                                        end_time = pygame.time.get_ticks()
+                    current_player = 1
+                else:
+                    mouse_x, mouse_y = event.pos
+
+                    if mouse_y > info_bar_height:
+                        col = mouse_x // card_width
+                        row = (mouse_y - info_bar_height) // card_height
+                        index = row * cols + col
+
+                        if 0 <= index < len(cards):
+                            if index not in selected_cards + matched_cards:
+                                selected_cards.append(index)
+                            if len(selected_cards) == 2:
+                                pygame.time.wait(200)
+
+                                if check_for_match(cards, selected_cards, matched_cards, match_sound, player_scores,
+                                                   current_player):
+                                    if num_players == 2:
+                                        continue
+                                else:
+                                    current_player = 2 if current_player == 1 else 1
 
         screen.fill(bg_color)
+
+        if num_players:
+            turn_text = font.render(player_turns[current_player], True, text_color, info_bar_color)
+            screen.blit(turn_text, (10, 5))  # Adjust as necessary
 
         pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
         pygame.draw.rect(screen, button_color, reset_button_rect)
@@ -186,6 +243,7 @@ def run_game():
             elapsed_time = (current_time - start_time) // 1000
         else:
             elapsed_time = (end_time - start_time) // 1000  # Use end_time if game is over
+
         timer_minutes = elapsed_time // 60
         timer_seconds = elapsed_time % 60
         timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
