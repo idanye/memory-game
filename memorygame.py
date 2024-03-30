@@ -140,7 +140,13 @@ def run_game():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if reset_button_rect.collidepoint(event.pos) or play_again_button_rect.collidepoint(event.pos):
+                mouse_pos = event.pos
+                if reset_button_rect.collidepoint(mouse_pos) and not play_again_visible:
+                    # Reset game logic goes here
+                    cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
+                    game_over = False
+                elif play_again_button_rect.collidepoint(mouse_pos) and play_again_visible:
+                    # Play again logic goes here
                     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
                     game_over = False
                     play_again_visible = False
