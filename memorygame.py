@@ -69,7 +69,6 @@ def run_game():
     pygame.mixer.init()
     pygame.font.init()
     match_sound = pygame.mixer.Sound('match.wav')
-    # set the pygame window name
     pygame.display.set_caption('Memory Game')
 
     # Game settings
@@ -109,28 +108,32 @@ def run_game():
 
     # Adjust game settings based on difficulty
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
-
     card_width, card_height = screen_width // cols, game_area_height // rows
 
     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
 
     # Define button sizes and positions
-    button_height = 30  # Ensure all buttons have the same height
-    button_padding = 10
+    button_padding_horizontal = 10
+    button_padding_vertical = 5
 
-    # Draw reset button
+    # Draw reset button and define play again button
     reset_text = font.render('Reset', True, text_color)
-    reset_button_width = reset_text.get_width() + 2 * button_padding
-    reset_button_rect = pygame.Rect(10, (info_bar_height - button_height) // 2, reset_button_width, button_height)
+    reset_button_width = reset_text.get_width() + (2 * button_padding_horizontal)
+    reset_button_height = font.size('Test')[1] + (2 * button_padding_vertical)
+    reset_button_rect = pygame.Rect(10, (info_bar_height - reset_button_height) // 2, reset_button_width,
+                                    reset_button_height)
 
     play_again_text = font.render('Play Again', True, text_color)
-    play_again_button_width = play_again_text.get_width() + 2 * button_padding
+    play_again_button_width = play_again_text.get_width() + (2 * button_padding_horizontal)
+    play_again_button_height = reset_button_height
     play_again_button_rect = pygame.Rect(screen_width - play_again_button_width - 10,
-                                         (info_bar_height - button_height) // 2, play_again_button_width, button_height)
+                                         (info_bar_height - play_again_button_height) // 2, play_again_button_width,
+                                         play_again_button_height)
 
     # Main game loop
     running = True
     end_time = None
+    play_again_visible = False
 
     while running:
         for event in pygame.event.get():
@@ -140,6 +143,7 @@ def run_game():
                 if reset_button_rect.collidepoint(event.pos) or play_again_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
                     game_over = False
+                    play_again_visible = False
                 elif not game_over:
                     x, y = event.pos
                     if y > info_bar_height:
@@ -159,49 +163,42 @@ def run_game():
         screen.fill(bg_color)
 
         pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
-
         pygame.draw.rect(screen, button_color, reset_button_rect)
-        screen.blit(reset_text, (
-            reset_button_rect.x + button_padding, reset_button_rect.y + (button_height - reset_text.get_height()) // 2))
+        screen.blit(reset_text,
+                    (reset_button_rect.x + button_padding_horizontal, reset_button_rect.y + button_padding_vertical))
 
-        pygame.draw.rect(screen, button_color, play_again_button_rect)
-        screen.blit(play_again_text, (play_again_button_rect.x + button_padding,
-                                      play_again_button_rect.y + (button_height - play_again_text.get_height()) // 2))
+        if play_again_visible:
+            pygame.draw.rect(screen, button_color, play_again_button_rect)
+            screen.blit(play_again_text, (
+            play_again_button_rect.x + button_padding_horizontal, play_again_button_rect.y + button_padding_vertical))
 
         # Timer logic and rendering in the info bar
         if not game_over:
             current_time = pygame.time.get_ticks()
             elapsed_time = (current_time - start_time) // 1000
-        else:
-            if end_time is None:
-                end_time = pygame.time.get_ticks()
-            elapsed_time = (end_time - start_time) // 1000
-
-        timer_minutes = elapsed_time // 60
-        timer_seconds = elapsed_time % 60
-        timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
-        timer_surface = font.render(timer_text, True, text_color, info_bar_color)
-        timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2)))
-        screen.blit(timer_surface, timer_rect)
+            timer_minutes = elapsed_time // 60
+            timer_seconds = elapsed_time % 60
+            timer_text = f'{timer_minutes:02}:{timer_seconds:02}'
+            timer_surface = font.render(timer_text, True, text_color, info_bar_color)
+            timer_rect = timer_surface.get_rect(center=((screen_width // 2), (info_bar_height // 2)))
+            screen.blit(timer_surface, timer_rect)
 
         # Draw cards
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
                    info_bar_height)
 
         if game_over:
+            play_again_visible = True
             message_box_width, message_box_height = 200, 100
             message_box_x, message_box_y = (screen_width - message_box_width) // 2, (
-                    screen_height - message_box_height) // 2
+                        screen_height - message_box_height) // 2
             pygame.draw.rect(screen, (100, 100, 100),
                              (message_box_x, message_box_y, message_box_width, message_box_height))
 
             well_done_surface = font.render('Well done!', True, text_color)
             well_done_x = message_box_x + (message_box_width - well_done_surface.get_width()) // 2
             well_done_y = message_box_y + (message_box_height - well_done_surface.get_height()) // 2
-
             screen.blit(well_done_surface, (well_done_x, well_done_y))
-            pygame.draw.rect(screen, button_color, play_again_button_rect)
-            screen.blit(play_again_text, (play_again_button_rect.x + 5, play_again_button_rect.y + 5))
 
         pygame.display.flip()
 
