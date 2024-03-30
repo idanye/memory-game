@@ -10,15 +10,21 @@ def reset_game(colors, cols, rows):
     """
     num_pairs = cols * rows // 2
     cards = colors[:num_pairs] * 2
+    # Ensure there are enough colors to fill the grid, repeat color pairs if necessary
+    extended_colors = (colors * ((num_pairs // len(colors)) + 1))[:num_pairs]
+    cards = extended_colors * 2
+
     random.shuffle(cards)
     selected_cards = []
     matched_cards = []
     game_over = False
     start_time = pygame.time.get_ticks()
+
     return cards, selected_cards, matched_cards, game_over, start_time
 
 
-def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color, info_bar_height):
+def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+               info_bar_height):
     """
     Draws the cards on the screen. Shows card color if selected or matched, otherwise shows a hidden color.
     """
@@ -43,6 +49,19 @@ def check_for_match(cards, selected_cards, matched_cards, match_sound):
         selected_cards.clear()
 
 
+def display_difficulty_selection(screen, font, text_color):
+    screen.fill((255, 255, 255))  # Fill the screen with white
+    difficulties = ["Easy", "Medium", "Hard"]
+    difficulty_rects = []
+    for index, difficulty in enumerate(difficulties):
+        text = font.render(difficulty, True, text_color)
+        rect = text.get_rect(center=(320, 120 + index * 60))
+        screen.blit(text, rect)
+        difficulty_rects.append(rect)
+    pygame.display.flip()
+    return difficulty_rects
+
+
 def run_game():
     pygame.init()
     pygame.mixer.init()
@@ -61,12 +80,29 @@ def run_game():
     text_color = (0, 0, 0)
     colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
               (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0)]
-    cols, rows = 4, 4
+
+    font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
+
+    # Difficulty selection screen
+    difficulty_rects = display_difficulty_selection(screen, font, text_color)
+    difficulty = None
+    while difficulty is None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                for i, rect in enumerate(difficulty_rects):
+                    if rect.collidepoint(event.pos):
+                        difficulty = ["Easy", "Medium", "Hard"][i]
+        pygame.time.wait(100)
+
+    # Adjust game settings based on difficulty
+    cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
+
     card_width, card_height = screen_width // cols, game_area_height // rows
 
     cards, selected_cards, matched_cards, game_over, start_time = reset_game(colors, cols, rows)
-
-    font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
 
     # Define buttons
     reset_button_rect = pygame.Rect(10, 10, 100, 30)
