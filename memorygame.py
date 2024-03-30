@@ -10,9 +10,6 @@ def reset_game(colors, cols, rows):
     """
     num_pairs = cols * rows // 2
     cards = colors[:num_pairs] * 2
-    # Ensure there are enough colors to fill the grid, repeat color pairs if necessary
-    extended_colors = (colors * ((num_pairs // len(colors)) + 1))[:num_pairs]
-    cards = extended_colors * 2
 
     random.shuffle(cards)
     selected_cards = []
@@ -78,8 +75,13 @@ def run_game():
     button_color = (150, 150, 150)  # Color for the reset button
     hidden_color = (0, 0, 0)
     text_color = (0, 0, 0)
-    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
-              (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0)]
+    colors = [
+        (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+        (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0),
+        (0, 0, 128), (128, 128, 0), (128, 0, 128), (0, 128, 128),
+        (192, 192, 192), (128, 128, 128), (64, 0, 0), (0, 64, 0),
+        (0, 0, 64), (64, 64, 0), (64, 0, 64), (0, 64, 64)
+    ]
 
     font = pygame.font.SysFont(None, 36)  # Creates a default system font of size 36
 
@@ -160,9 +162,26 @@ def run_game():
                    info_bar_height)
 
         if game_over:
-            well_done_surface = font.render('Well done!', True, text_color)
-            screen.blit(well_done_surface, ((screen_width // 2) - (well_done_surface.get_width() // 2), 10))
+            # Dimensions and position for the message box
+            message_box_width = 200
+            message_box_height = 100
+            message_box_x = (screen_width - message_box_width) // 2
+            message_box_y = (screen_height - message_box_height) // 2
 
+            # Drawing the message box
+            message_box_color = (100, 100, 100)  # A dark gray color for the message box
+            pygame.draw.rect(screen, message_box_color,
+                             (message_box_x, message_box_y, message_box_width, message_box_height))
+
+            # Calculating position for the "Well done!" text so it appears centered in the message box
+            well_done_surface = font.render('Well done!', True, text_color)
+            well_done_x = message_box_x + (message_box_width - well_done_surface.get_width()) // 2
+            well_done_y = message_box_y + (message_box_height - well_done_surface.get_height()) // 2
+
+            # Drawing the "Well done!" text over the message box
+            screen.blit(well_done_surface, (well_done_x, well_done_y))
+
+            # Drawing the "Play Again" button below or within the message box as desired
             pygame.draw.rect(screen, button_color, play_again_button_rect)
             screen.blit(play_again_text, (play_again_button_rect.x + 5, play_again_button_rect.y + 5))
 
