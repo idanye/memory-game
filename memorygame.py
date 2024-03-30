@@ -47,14 +47,18 @@ def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, c
     return match
 
 
-def display_difficulty_selection(font, text_color):
+def display_difficulty_selection(screen, font, text_color):
     difficulties = ["Easy", "Medium", "Hard"]
     difficulty_rects = []
+    screen.fill((255, 255, 255))  # Fill the screen with background color first
 
     for index, difficulty in enumerate(difficulties):
         text = font.render(difficulty, True, text_color)
         rect = text.get_rect(center=(320, 120 + index * 60))
         difficulty_rects.append(rect)
+        screen.blit(text, rect)
+
+    pygame.display.flip()  # Update the display to show the changes
 
     return difficulty_rects
 
@@ -138,8 +142,10 @@ def run_game():
                     num_players = 2
                     break
 
+    screen.fill(bg_color)
+
     # Once the number of players is chosen, proceed to difficulty selection
-    difficulty_rects = display_difficulty_selection(font, text_color)
+    difficulty_rects = display_difficulty_selection(screen, font, text_color)
     difficulty = None
 
     while difficulty is None:
@@ -152,8 +158,8 @@ def run_game():
                     if rect.collidepoint(event.pos):
                         difficulty = ["Easy", "Medium", "Hard"][i]
                         break
-        if difficulty:
-            break
+            if difficulty:
+                break
 
     # Adjust game settings based on difficulty
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
