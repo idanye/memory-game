@@ -223,16 +223,18 @@ def run_game():
         # Timer logic and rendering in the info bar
         current_time = pygame.time.get_ticks()
 
+        if len(matched_cards) == len(cards) and not game_over:  # Check if all cards have been matched
+            game_over = True
+            end_time = current_time  # Capture end time at the moment game ends
+            play_again_visible = True
+
         if not game_over:
             elapsed_time = (current_time - start_time) // 1000
         else:
-            if end_time is None:  # Only set end_time once
-                end_time = current_time
             elapsed_time = (end_time - start_time) // 1000
 
-        if len(matched_cards) == len(cards) and not game_over:  # Check if all cards have been matched
-            game_over = True
-            play_again_visible = True
+        # Prevent elapsed time from going negative
+        elapsed_time = max(0, elapsed_time)
 
         timer_minutes = elapsed_time // 60
         timer_seconds = elapsed_time % 60
