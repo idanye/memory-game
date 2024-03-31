@@ -249,17 +249,33 @@ def run_game():
 
         if game_over:
             play_again_visible = True
-            message_box_width, message_box_height = 200, 100
-            message_box_x, message_box_y = (screen_width - message_box_width) // 2, (
-                        screen_height - message_box_height) // 2
 
+            # Enhanced game over message logic to handle ties and dynamically size the message box
+            if num_players == 2:
+                if scores[1] > scores[2]:
+                    game_over_message = f'Player 1 Wins with {scores[1]} Points!'
+                elif scores[2] > scores[1]:
+                    game_over_message = f'Player 2 Wins with {scores[2]} Points!'
+                else:  # Handle tie scenario
+                    game_over_message = 'The game is a Tie!'
+            else:
+                game_over_message = 'Well done!'
+
+            # Calculate the required size for the message box based on the message
+            game_over_surface = font.render(game_over_message, True, text_color)
+            message_box_width = max(200, game_over_surface.get_width() + 20)  # Ensure minimum width and padding
+            message_box_height = 100
+            message_box_x = (screen_width - message_box_width) // 2
+            message_box_y = (screen_height - message_box_height) // 2
+
+            # Draw the message box large enough for the game over message
             pygame.draw.rect(screen, (100, 100, 100),
                              (message_box_x, message_box_y, message_box_width, message_box_height))
-            well_done_surface = font.render('Well done!', True, text_color)
-            well_done_x = message_box_x + (message_box_width - well_done_surface.get_width()) // 2
-            well_done_y = message_box_y + (message_box_height - well_done_surface.get_height()) // 2
 
-            screen.blit(well_done_surface, (well_done_x, well_done_y))
+            # Position the game over message in the center of the message box
+            game_over_x = message_box_x + (message_box_width - game_over_surface.get_width()) // 2
+            game_over_y = message_box_y + (message_box_height - game_over_surface.get_height()) // 2
+            screen.blit(game_over_surface, (game_over_x, game_over_y))
 
         # Display scores and current player's turn for 2 Player mode
         if num_players == 2:
