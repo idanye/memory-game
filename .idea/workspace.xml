@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0af02323-b408-4d10-9836-8daf5e127466" name="Changes" comment="2 Player mode with timer number fixed">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/memorygame.py" beforeDir="false" afterPath="$PROJECT_DIR$/memorygame.py" afterDir="false" />
-    </list>
+    <list default="true" id="0af02323-b408-4d10-9836-8daf5e127466" name="Changes" comment="Added Time attack mode, every thing works but button doesn't cover the entire text" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -138,7 +135,7 @@
       <workItem from="1711692856405" duration="3337000" />
       <workItem from="1711729794378" duration="3106000" />
       <workItem from="1711786815194" duration="10054000" />
-      <workItem from="1711877763836" duration="4346000" />
+      <workItem from="1711877763836" duration="4677000" />
     </task>
     <task id="LOCAL-00001" summary="Created initial project">
       <option name="closed" value="true" />
@@ -356,7 +353,15 @@
       <option name="project" value="LOCAL" />
       <updated>1711878739359</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="Added Time attack mode, every thing works but button doesn't cover the entire text">
+      <option name="closed" value="true" />
+      <created>1711884586040</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1711884586040</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -404,7 +409,8 @@
     <MESSAGE value="2 Player mode working correctly!!" />
     <MESSAGE value="2 Player mode with announcing the winner at the end" />
     <MESSAGE value="2 Player mode with timer number fixed" />
-    <option name="LAST_COMMIT_MESSAGE" value="2 Player mode with timer number fixed" />
+    <MESSAGE value="Added Time attack mode, every thing works but button doesn't cover the entire text" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added Time attack mode, every thing works but button doesn't cover the entire text" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -423,7 +429,7 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/assignment1_exercise1$memorygame.coverage" NAME="memorygame Coverage Results" MODIFIED="1711883810420" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/assignment1_exercise1$memorygame.coverage" NAME="memorygame Coverage Results" MODIFIED="1711884502095" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/assignment1_exercise1$main.coverage" NAME="main Coverage Results" MODIFIED="1711730217666" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/memory_game" />
   </component>
 </project>

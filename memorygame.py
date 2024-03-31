@@ -86,28 +86,41 @@ def main_menu(screen, font, text_color):
     title_rect = title_surface.get_rect(center=(320, 240 - 60))
 
     button_color = (150, 150, 150)
-
-    # Calculate the total width for all buttons and spaces between them
-    total_buttons_width = 150 * 3 + 10 * 2  # 3 buttons and 2 gaps
-    # Calculate the starting x position to center the buttons
-    start_x_position = (screen.get_width() - total_buttons_width) // 2
-
-    # Define the buttons with the new calculated positions
-    time_attack_button = pygame.Rect(start_x_position, 240 - 25, 150, 50)
-    one_player_button = pygame.Rect(start_x_position + 150 + 10, 240 - 25, 150, 50)
-    two_player_button = pygame.Rect(start_x_position + (150 + 10) * 2, 240 - 25, 150, 50)
+    button_padding_horizontal = 20  # Increase padding if necessary
+    button_spacing = 10
 
     one_player_text = font.render('1 Player', True, text_color)
     two_player_text = font.render('2 Players', True, text_color)
     time_attack_text = font.render('Time Attack', True, text_color)
 
+    # Calculate button widths based on text widths
+    one_player_button_width = one_player_text.get_width() + button_padding_horizontal
+    two_player_button_width = two_player_text.get_width() + button_padding_horizontal
+    time_attack_button_width = time_attack_text.get_width() + button_padding_horizontal
+
+    # Calculate the total width for all buttons and spaces between them
+    total_buttons_width = one_player_button_width + two_player_button_width + time_attack_button_width + 2 * button_spacing
+
+    # Calculate the starting x position to center the buttons
+    start_x_position = (screen.get_width() - total_buttons_width) // 2
+
+    # Define the buttons with the new calculated positions and widths
+    time_attack_button = pygame.Rect(start_x_position, 240 - 25, time_attack_button_width, 50)
+    one_player_button = pygame.Rect(start_x_position + time_attack_button_width + button_spacing, 240 - 25,
+                                    one_player_button_width, 50)
+    two_player_button = pygame.Rect(
+        start_x_position + time_attack_button_width + one_player_button_width + 2 * button_spacing, 240 - 25,
+        two_player_button_width, 50)
+
     screen.fill((255, 255, 255))
 
+    # Display the buttons and the title
     screen.blit(title_surface, title_rect.topleft)
     pygame.draw.rect(screen, button_color, one_player_button)
     pygame.draw.rect(screen, button_color, two_player_button)
     pygame.draw.rect(screen, button_color, time_attack_button)
 
+    # Blit the button text centered in the buttons
     screen.blit(one_player_text, one_player_text.get_rect(center=one_player_button.center))
     screen.blit(two_player_text, two_player_text.get_rect(center=two_player_button.center))
     screen.blit(time_attack_text, time_attack_text.get_rect(center=time_attack_button.center))
