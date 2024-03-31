@@ -43,6 +43,14 @@ def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, c
     return match
 
 
+def display_text(screen, text, font, color, position):
+    """
+    Renders text on the screen at the specified position.
+    """
+    text_surface = font.render(text, True, color)
+    screen.blit(text_surface, position)
+
+
 def display_difficulty_selection(screen, font, text_color):
     difficulties = ["Easy", "Medium", "Hard"]
     difficulty_rects = []
@@ -59,12 +67,17 @@ def display_difficulty_selection(screen, font, text_color):
     return difficulty_rects
 
 
-def display_text(screen, text, font, color, position):
-    """
-    Renders text on the screen at the specified position.
-    """
-    text_surface = font.render(text, True, color)
-    screen.blit(text_surface, position)
+def display_game_over_message(screen, message, font, text_color, screen_width, screen_height):
+    game_over_surface = font.render(message, True, text_color)
+    message_box_width = max(200, game_over_surface.get_width() + 20)
+    message_box_height = 100
+    message_box_x = (screen_width - message_box_width) // 2
+    message_box_y = (screen_height - message_box_height) // 2
+
+    pygame.draw.rect(screen, (100, 100, 100), (message_box_x, message_box_y, message_box_width, message_box_height))
+    game_over_x = message_box_x + (message_box_width - game_over_surface.get_width()) // 2
+    game_over_y = message_box_y + (message_box_height - game_over_surface.get_height()) // 2
+    screen.blit(game_over_surface, (game_over_x, game_over_y))
 
 
 def main_menu(screen, font, text_color):
@@ -73,24 +86,36 @@ def main_menu(screen, font, text_color):
     title_rect = title_surface.get_rect(center=(320, 240 - 60))
 
     button_color = (150, 150, 150)
-    one_player_button = pygame.Rect(190, 240 - 25, 150, 50)
-    two_player_button = pygame.Rect(190 + 150 + 10, 240 - 25, 150, 50)
+
+    # Calculate the total width for all buttons and spaces between them
+    total_buttons_width = 150 * 3 + 10 * 2  # 3 buttons and 2 gaps
+    # Calculate the starting x position to center the buttons
+    start_x_position = (screen.get_width() - total_buttons_width) // 2
+
+    # Define the buttons with the new calculated positions
+    time_attack_button = pygame.Rect(start_x_position, 240 - 25, 150, 50)
+    one_player_button = pygame.Rect(start_x_position + 150 + 10, 240 - 25, 150, 50)
+    two_player_button = pygame.Rect(start_x_position + (150 + 10) * 2, 240 - 25, 150, 50)
 
     one_player_text = font.render('1 Player', True, text_color)
     two_player_text = font.render('2 Players', True, text_color)
+    time_attack_text = font.render('Time Attack', True, text_color)
 
     screen.fill((255, 255, 255))
 
     screen.blit(title_surface, title_rect.topleft)
     pygame.draw.rect(screen, button_color, one_player_button)
     pygame.draw.rect(screen, button_color, two_player_button)
+    pygame.draw.rect(screen, button_color, time_attack_button)
 
     screen.blit(one_player_text, one_player_text.get_rect(center=one_player_button.center))
     screen.blit(two_player_text, two_player_text.get_rect(center=two_player_button.center))
+    screen.blit(time_attack_text, time_attack_text.get_rect(center=time_attack_button.center))
 
     pygame.display.flip()
 
     num_players = None
+    time_attack = False
 
     while not num_players:
         for event in pygame.event.get():
@@ -102,8 +127,11 @@ def main_menu(screen, font, text_color):
                     num_players = 1
                 elif two_player_button.collidepoint(event.pos):
                     num_players = 2
+                elif time_attack_button.collidepoint(event.pos):
+                    num_players = 1  # Time Attack mode is a kind of single-player mode
+                    time_attack = True
 
-    return num_players
+    return num_players, time_attack
 
 
 def run_game():
@@ -133,8 +161,8 @@ def run_game():
 
     font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
 
-    # Main menu for player mode selection
-    num_players = main_menu(screen, font, text_color)
+    # Main menu call now returns whether Time Attack mode is selected
+    num_players, time_attack_mode = main_menu(screen, font, text_color)
 
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -179,6 +207,10 @@ def run_game():
     running = True
     end_time = None
     play_again_visible = False
+    # Initialize Time Attack mode variables
+    time_attack_time_limit = 60
+    time_attack_time_decrement = 5
+    time_attack_start_time = None
 
     while running:
         screen.fill(bg_color)
@@ -213,6 +245,50 @@ def run_game():
                                 if not match and num_players == 2:
                                     current_player = 2 if current_player == 1 else 1  # Change
 
+        # Time Attack mode logic
+        if time_attack_mode and not game_over:
+            current_time = pygame.time.get_ticks()
+            if time_attack_start_time is None:
+                time_attack_start_time = current_time
+            elapsed_time = (current_time - time_attack_start_time) // 1000
+            remaining_time = time_attack_time_limit - elapsed_time
+
+            if remaining_time <= 0:
+                game_over = True
+                play_again_visible = True  # Show play again option
+                time_attack_mode = False  # Exit Time Attack mode
+
+        # If the game is over, handle the continuation for Time Attack mode or show game over message
+        message = ""
+
+        if game_over:
+            play_again_visible = True
+
+            if time_attack_mode:
+                if len(matched_cards) == len(cards):
+                    # Reset the game for Time Attack with a reduced time limit
+                    time_attack_time_limit = max(10, time_attack_time_limit - time_attack_time_decrement)
+                    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
+                        colors, cols, rows, num_players)
+                    time_attack_start_time = pygame.time.get_ticks()  # Restart the time attack timer
+                    play_again_visible = False  # We're starting a new round, so hide the play again button
+                else:
+                    # Display the appropriate game over message for either mode
+                    message = "Time's up! Try again?"
+            else:
+                # Regular mode game over handling
+                if num_players == 2:
+                    if scores[1] > scores[2]:
+                        message = f'Player 1 Wins with {scores[1]} Points!'
+                    elif scores[2] > scores[1]:
+                        message = f'Player 2 Wins with {scores[2]} Points!'
+                    else:  # Handle tie scenario
+                        message = 'The game is a Tie!'
+                else:
+                    message = "Well done!" if len(matched_cards) == len(cards) else "Game Over!"
+
+            if message:  # Display the game over message if it's set
+                display_game_over_message(screen, message, font, text_color, screen_width, screen_height)
 
         # Draw UI elements like info bar, reset button, and timer
         pygame.draw.rect(screen, info_bar_color, (0, 0, screen_width, info_bar_height))
@@ -248,36 +324,6 @@ def run_game():
             screen.blit(play_again_text, (
                 play_again_button_rect.x + button_padding_horizontal,
                 play_again_button_rect.y + button_padding_vertical))
-
-        if game_over:
-            play_again_visible = True
-
-            # Enhanced game over message logic to handle ties and dynamically size the message box
-            if num_players == 2:
-                if scores[1] > scores[2]:
-                    game_over_message = f'Player 1 Wins with {scores[1]} Points!'
-                elif scores[2] > scores[1]:
-                    game_over_message = f'Player 2 Wins with {scores[2]} Points!'
-                else:  # Handle tie scenario
-                    game_over_message = 'The game is a Tie!'
-            else:
-                game_over_message = 'Well done!'
-
-            # Calculate the required size for the message box based on the message
-            game_over_surface = font.render(game_over_message, True, text_color)
-            message_box_width = max(200, game_over_surface.get_width() + 20)  # Ensure minimum width and padding
-            message_box_height = 100
-            message_box_x = (screen_width - message_box_width) // 2
-            message_box_y = (screen_height - message_box_height) // 2
-
-            # Draw the message box large enough for the game over message
-            pygame.draw.rect(screen, (100, 100, 100),
-                             (message_box_x, message_box_y, message_box_width, message_box_height))
-
-            # Position the game over message in the center of the message box
-            game_over_x = message_box_x + (message_box_width - game_over_surface.get_width()) // 2
-            game_over_y = message_box_y + (message_box_height - game_over_surface.get_height()) // 2
-            screen.blit(game_over_surface, (game_over_x, game_over_y))
 
         # Display scores and current player's turn for 2 Player mode
         if num_players == 2:
