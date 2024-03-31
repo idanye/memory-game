@@ -10,21 +10,27 @@ def reset_game(colors, cols, rows, num_players):
 
 
 def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-               info_bar_height):
+               info_bar_height, card_animations):
     """
-    Draws the cards on the screen. Shows card color if selected or matched, otherwise shows a hidden color.
+    Draws the cards on the screen, now accounting for animation states.
     """
     for index, card in enumerate(cards):
         row, col = divmod(index, cols)
         x = col * card_width
         y = row * card_height + info_bar_height
-        rect = pygame.Rect(x, y, card_width, card_height)
 
-        if index in matched_cards or index in selected_cards:
-            pygame.draw.rect(screen, card, rect)
+        animation = card_animations.get(index)
+
+        if animation:
+            width = card_width * (1 - abs(animation['progress'] - 0.5) * 2)
+            x += (card_width - width) / 2
+            color = animation['color'] if animation['progress'] >= 0.5 else hidden_color
         else:
-            pygame.draw.rect(screen, hidden_color, rect)
+            width = card_width
+            color = card if index in matched_cards or index in selected_cards else hidden_color
 
+        rect = pygame.Rect(x, y, width, card_height)
+        pygame.draw.rect(screen, color, rect)
         pygame.draw.rect(screen, (0, 0, 0), rect, 3)  # Draw card border
 
 
@@ -173,9 +179,11 @@ def run_game():
     ]
 
     font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
+    clock = pygame.time.Clock()  # Setup the clock for controlling frame rate
 
     # Main menu call now returns whether Time Attack mode is selected
     num_players, time_attack_mode = main_menu(screen, font, text_color)
+    card_animations = {}  # Track animation state of cards
 
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -228,7 +236,7 @@ def run_game():
     while running:
         screen.fill(bg_color)
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-                   info_bar_height)
+                   info_bar_height, card_animations)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -250,7 +258,9 @@ def run_game():
                         index = row * cols + col
 
                         if 0 <= index < len(cards) and index not in selected_cards + matched_cards:
+                            card_animations[index] = {'progress': 0, 'color': hidden_color}  # Initialize animation
                             selected_cards.append(index)
+
                             if len(selected_cards) == 2:
                                 pygame.time.wait(500)
                                 match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
@@ -343,7 +353,22 @@ def run_game():
             display_text(screen, f"Player 1: {scores[1]} - Player 2: {scores[2]}", font, text_color, (10, 10))
             display_text(screen, f"Player {current_player}'s Turn", font, text_color, (screen_width - 220, 10))
 
+        to_remove = []
+
+        for index, animation in card_animations.items():
+            animation['progress'] += 0.01  # Adjust speed as needed
+
+            if animation['progress'] >= 1:
+                to_remove.append(index)
+            else:
+                if animation['progress'] >= 0.5 and 'color' not in animation or animation['color'] is hidden_color:
+                    animation['color'] = cards[index]  # Switch to card's color at the halfway point
+
+        for index in to_remove:
+            card_animations.pop(index, None)
+
         pygame.display.flip()
+        clock.tick(60)  # Maintain a steady frame rate
 
     pygame.quit()
 
