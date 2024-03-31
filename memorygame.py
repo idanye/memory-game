@@ -184,6 +184,9 @@ def run_game():
     # Main menu call now returns whether Time Attack mode is selected
     num_players, time_attack_mode = main_menu(screen, font, text_color)
     card_animations = {}  # Track animation state of cards
+    animation_in_progress = False
+    selected_cards = []
+    matched_cards = []
 
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -232,11 +235,22 @@ def run_game():
     time_attack_time_limit = 60
     time_attack_time_decrement = 5
     time_attack_start_time = None
+    clicked_cards_queue = []
+    card_flip_timestamp = None
+
+    # Constants for card states
+    HIDDEN = 0
+    REVEALED = 1
+
+    # Initialize additional variables
+    flipping_back_start = None  # Timestamp for when cards start flipping back
+    flip_back_duration = 1000  # How long to show cards before flipping back (in milliseconds)
 
     while running:
         screen.fill(bg_color)
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
                    info_bar_height, card_animations)
+        current_time = pygame.time.get_ticks()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -257,16 +271,36 @@ def run_game():
                         row = (mouse_y - info_bar_height) // card_height
                         index = row * cols + col
 
-                        if 0 <= index < len(cards) and index not in selected_cards + matched_cards:
-                            card_animations[index] = {'progress': 0, 'color': hidden_color}  # Initialize animation
-                            selected_cards.append(index)
+                        if 0 <= index < len(cards) and index not in selected_cards and index not in matched_cards:
+                            if not animation_in_progress:
+                                card_animations[index] = {'progress': 0, 'color': cards[index], 'state': REVEALED}
+                                selected_cards.append(index)
+                                animation_in_progress = True
+                                if len(selected_cards) == 2:
+                                    # Check for a match after a short delay
+                                    pygame.time.wait(500)  # This will halt the game, consider revising as suggested earlier
+                                    match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
+                                                            current_player)
+                                    if not match:
+                                        # No match, start flip back animation after 1 second
+                                        pygame.time.set_timer(pygame.USEREVENT, 1000)
+                                    else:
+                                        # It's a match, update matched cards and scores
+                                        matched_cards.extend(selected_cards)
+                                        scores[current_player] += 1
+                                        selected_cards = []
+                                        animation_in_progress = False
 
-                            if len(selected_cards) == 2:
-                                pygame.time.wait(500)
-                                match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
-                                                        current_player)
-                                if not match and num_players == 2:
-                                    current_player = 2 if current_player == 1 else 1  # Change
+                                    # Switch player turns in 2 player mode if no match
+                                    if not match and num_players == 2:
+                                        current_player = 2 if current_player == 1 else 1
+
+            # Handle the event to flip cards back over
+            if event.type == pygame.USEREVENT:
+                pygame.time.set_timer(pygame.USEREVENT, 0)  # Stop the timer
+                for idx in selected_cards:
+                    card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': HIDDEN}
+                selected_cards = []
 
         # Time Attack mode logic
         if time_attack_mode and not game_over:
@@ -353,19 +387,24 @@ def run_game():
             display_text(screen, f"Player 1: {scores[1]} - Player 2: {scores[2]}", font, text_color, (10, 10))
             display_text(screen, f"Player {current_player}'s Turn", font, text_color, (screen_width - 220, 10))
 
+        # Animation logic to update or clear animations
         to_remove = []
 
         for index, animation in card_animations.items():
-            animation['progress'] += 0.01  # Adjust speed as needed
+            if animation['state'] == REVEALED:
+                animation['progress'] += 0.01
+                if animation['progress'] >= 1:
+                    animation_in_progress = False
+                    to_remove.append(index)
+            elif animation['state'] == HIDDEN:
+                animation['progress'] += 0.01
 
-            if animation['progress'] >= 1:
-                to_remove.append(index)
-            else:
-                if animation['progress'] >= 0.5 and 'color' not in animation or animation['color'] is hidden_color:
-                    animation['color'] = cards[index]  # Switch to card's color at the halfway point
+                if animation['progress'] >= 1:
+                    matched_cards.remove(index)  # Remove from matched_cards if it's not a match
+                    to_remove.append(index)
 
         for index in to_remove:
-            card_animations.pop(index, None)
+            del card_animations[index]
 
         pygame.display.flip()
         clock.tick(60)  # Maintain a steady frame rate
