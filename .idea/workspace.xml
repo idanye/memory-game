@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0af02323-b408-4d10-9836-8daf5e127466" name="Changes" comment="Commands still not working but voice control commands recognized and voice functions working correctly">
+    <list default="true" id="0af02323-b408-4d10-9836-8daf5e127466" name="Changes" comment="Voice recognition working but card colors, flipping back/logic not working">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/memorygame.py" beforeDir="false" afterPath="$PROJECT_DIR$/memorygame.py" afterDir="false" />
     </list>
@@ -429,7 +429,15 @@
       <option name="project" value="LOCAL" />
       <updated>1711987547208</updated>
     </task>
-    <option name="localTasksCounter" value="34" />
+    <task id="LOCAL-00034" summary="Voice recognition working but card colors, flipping back/logic not working">
+      <option name="closed" value="true" />
+      <created>1711988148268</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1711988148268</updated>
+    </task>
+    <option name="localTasksCounter" value="35" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -453,7 +461,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Play Again button showing up in info station but not correctly" />
     <MESSAGE value="Play Again button and well done not shown" />
     <MESSAGE value="Still Play Again button and well done not shown" />
     <MESSAGE value="Trying to make the 4 feature work, not there yet" />
@@ -478,34 +485,35 @@
     <MESSAGE value="Voice control button works but the logic of it doesn't work yet" />
     <MESSAGE value="Recognizes commands said but doesn't change the screen as a result." />
     <MESSAGE value="Commands still not working but voice control commands recognized and voice functions working correctly" />
-    <option name="LAST_COMMIT_MESSAGE" value="Commands still not working but voice control commands recognized and voice functions working correctly" />
+    <MESSAGE value="Voice recognition working but card colors, flipping back/logic not working" />
+    <option name="LAST_COMMIT_MESSAGE" value="Voice recognition working but card colors, flipping back/logic not working" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/memorygame.py</url>
-          <line>104</line>
+          <line>124</line>
           <option name="timeStamp" value="30" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/memorygame.py</url>
-          <line>111</line>
+          <line>131</line>
           <option name="timeStamp" value="31" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/memorygame.py</url>
-          <line>391</line>
+          <line>404</line>
           <option name="timeStamp" value="33" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/memorygame.py</url>
-          <line>47</line>
+          <line>67</line>
           <option name="timeStamp" value="37" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/memorygame.py</url>
-          <line>49</line>
+          <line>69</line>
           <option name="timeStamp" value="38" />
         </line-breakpoint>
       </breakpoints>

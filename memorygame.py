@@ -3,7 +3,6 @@ import threading
 import random
 from vosk import Model, KaldiRecognizer
 import json
-import os
 import sounddevice as sd
 
 pygame.init()
@@ -29,6 +28,27 @@ scores = {}
 card_animations = {}  # Track animation state of cards
 animation_in_progress = False
 num_players = 1
+
+# Game settings
+screen_width, screen_height = 640, 480
+info_bar_height = 100  # Height of the information bar at the top
+game_area_height = screen_height - info_bar_height  # Adjusted height for the game area
+screen = pygame.display.set_mode((screen_width, screen_height))
+bg_color = (255, 255, 255)
+info_bar_color = (230, 230, 230)  # A light grey color for the information bar
+button_color = (150, 150, 150)  # Color for the reset button
+hidden_color = (0, 0, 0)
+text_color = (0, 0, 0)
+colors = [
+    (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+    (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0),
+    (0, 0, 128), (128, 128, 0), (128, 0, 128), (0, 128, 128),
+    (192, 192, 192), (128, 128, 128), (64, 0, 0), (0, 64, 0),
+    (0, 0, 64), (64, 64, 0), (64, 0, 64), (0, 64, 64)
+]
+
+font = pygame.font.SysFont("calibri", 26)  # Creates a default system font of size 36
+clock = pygame.time.Clock()  # Set up the clock for controlling frame rate
 
 
 # Function to initialize the microphone and recognizer
@@ -112,29 +132,43 @@ def process_voice_commands():
     return action_taken
 
 
+def match_check_and_handle():
+    global selected_cards, matched_cards, scores, current_player, animation_in_progress
+
+    # Perform match checking
+    match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player)
+
+    if match:
+        matched_cards.extend(selected_cards)
+        scores[current_player] += 1
+    else:
+        # Schedule cards to flip back
+        for idx in selected_cards:
+            card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': 'HIDDEN'}
+
+    selected_cards.clear()
+    animation_in_progress = False
+
+    # Handle turn switching here if needed
+    if not match and num_players == 2:
+        current_player = 1 if current_player == 2 else 2
+
+
 def handle_card_selection(index):
     global selected_cards, matched_cards, animation_in_progress, current_player, scores, num_players, card_animations
 
-    if index not in selected_cards and index not in matched_cards:
-        if not animation_in_progress or len(selected_cards) < 2:
-            card_animations[index] = {'progress': 0, 'color': cards[index], 'state': 'REVEALED'}
-            selected_cards.append(index)
+    if len(selected_cards) < 2 and index not in selected_cards and index not in matched_cards:
+        card_animations[index] = {'progress': 0, 'color': cards[index], 'state': 'REVEALED'}
+        selected_cards.append(index)
+
+        # Only mark animation as in progress if it's the first card being selected.
+        if len(selected_cards) == 1:
             animation_in_progress = True
 
-            if len(selected_cards) == 2:
-                pygame.time.wait(500)  # This is blocking; consider revising for non-blocking delay
-                match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player)
-
-                if not match:
-                    pygame.time.set_timer(pygame.USEREVENT, 1000)
-                else:
-                    matched_cards.extend(selected_cards)
-                    scores[current_player] += 1
-                    selected_cards.clear()
-                    animation_in_progress = False
-
-                if not match and num_players == 2:
-                    current_player = 1 if current_player == 2 else 2
+    if len(selected_cards) == 2 and not animation_in_progress:
+        # Use a timer event for non-blocking delay, allowing animations to proceed.
+        pygame.time.set_timer(pygame.USEREVENT + 1, 500)  # 500 milliseconds until the event triggers
+        match_check_and_handle()
 
 
 def reset_game(colors, cols, rows):
@@ -308,26 +342,6 @@ def main_menu(screen, font, text_color):
 
 def run_game():
     global voice_control_mode, cards
-    # Game settings
-    screen_width, screen_height = 640, 480
-    info_bar_height = 100  # Height of the information bar at the top
-    game_area_height = screen_height - info_bar_height  # Adjusted height for the game area
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    bg_color = (255, 255, 255)
-    info_bar_color = (230, 230, 230)  # A light grey color for the information bar
-    button_color = (150, 150, 150)  # Color for the reset button
-    hidden_color = (0, 0, 0)
-    text_color = (0, 0, 0)
-    colors = [
-        (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
-        (255, 0, 255), (0, 255, 255), (128, 0, 0), (0, 128, 0),
-        (0, 0, 128), (128, 128, 0), (128, 0, 128), (0, 128, 128),
-        (192, 192, 192), (128, 128, 128), (64, 0, 0), (0, 64, 0),
-        (0, 0, 64), (64, 64, 0), (64, 0, 64), (0, 64, 64)
-    ]
-
-    font = pygame.font.SysFont("calibri", 26)  # Creates a default system font of size 36
-    clock = pygame.time.Clock()  # Set up the clock for controlling frame rate
 
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -385,12 +399,13 @@ def run_game():
 
     while running:
         screen.fill(bg_color)
-        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-                   info_bar_height, card_animations, font)
+        # draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+        #            info_bar_height, card_animations, font)
 
         # Modification: Added handling for updating the screen after voice command processing
         if voice_control_mode and process_voice_commands():  # Check if a command was processed and an action was taken
-            pygame.display.flip()
+            # pygame.display.flip()
+            pass
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -450,7 +465,7 @@ def run_game():
                     # Reset the game for Time Attack with a reduced time limit
                     time_attack_time_limit = max(10, time_attack_time_limit - time_attack_time_decrement)
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                     time_attack_start_time = pygame.time.get_ticks()  # Restart the time attack timer
                     play_again_visible = False  # We're starting a new round, so hide the play again button
                 else:
@@ -531,6 +546,8 @@ def run_game():
         for index in to_remove:
             del card_animations[index]
 
+        draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
+                              info_bar_height, card_animations, font)
         pygame.display.flip()
         clock.tick(60)  # Maintain a steady frame rate
 
