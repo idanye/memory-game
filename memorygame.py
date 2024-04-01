@@ -1,10 +1,10 @@
 import pygame
+import threading
 import random
 from vosk import Model, KaldiRecognizer
 import json
 import os
 import sounddevice as sd
-import numpy as np
 
 # Load the VOSK model for offline speech recognition
 model_path = "vosk-model-small-en-us-0.15"
@@ -18,7 +18,15 @@ recognizer = KaldiRecognizer(model, 16000)
 # Initialize global variables for voice control
 voice_command_queue = []
 voice_control_mode = False
-
+selected_cards = []
+cards = []
+matched_cards = []
+game_over = False
+current_player = 1
+scores = {}
+card_animations = {}  # Track animation state of cards
+animation_in_progress = False
+num_players = 1
 
 # Function to initialize the microphone and recognizer
 def init_voice_recognition():
@@ -33,67 +41,100 @@ def init_voice_recognition():
         if recognizer.AcceptWaveform(indata.tobytes()):
             result = json.loads(recognizer.Result())
             command = result.get('text', '').strip().lower()
+
             if command:
                 print("Recognized command:", command)
                 voice_command_queue.append(command)
         else:
             # Print partial results for immediate feedback
             partial = json.loads(recognizer.PartialResult())
+
             if partial.get('partial'):
                 print("Partial recognition:", partial['partial'])
 
-    try:
-        # Adjust dtype according to your system's configuration if necessary
-        stream = sd.InputStream(callback=callback, dtype='int16', channels=1, samplerate=16000)
-        stream.start()
-        print("Voice recognition initialized and listening...")
-    except Exception as e:
-        print("Failed to initialize voice recognition:", str(e))
+    def start_stream():
+        try:
+            stream = sd.InputStream(callback=callback, dtype='int16', channels=1, samplerate=16000)
+            stream.start()
+            print("Voice recognition initialized and listening...")
+        except Exception as e:
+            print(f"Failed to initialize voice recognition: {e}")
+
+    threading.Thread(target=start_stream).start()
 
 
 # Modified to return a boolean indicating whether an action was taken
 def process_voice_commands():
-    global selected_cards, cards, matched_cards, game_over, start_time, current_player, scores, voice_control_mode, match_sound
-
+    number_words_to_digits = {
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+        "six": "6",
+        "seven": "7",
+        "eight": "8",
+        "nine": "9",
+        "ten": "10",
+        "eleven": "11",
+        "twelve": "12",
+        "thirteen": "13",
+        "fourteen": "14",
+        "fifteen": "15",
+        "sixteen": "16",
+        "seventeen": "17",
+        "eighteen": "18",
+        "nineteen": "19",
+        "twenty": "20"
+    }
     action_taken = False  # Flag to track if any action was taken based on a voice command
 
     while voice_command_queue:
         command = voice_command_queue.pop(0).strip().lower()
+        print(f"Processing command: {command}")
+
+        # Convert number words to digits
+        if command in number_words_to_digits:
+            command = number_words_to_digits[command]
+
+            print(f"{int(command)}: is a number = {command.isdigit()}")
 
         if command.isdigit():
-            card_number = int(command) - 1
+            card_number = int(command)
 
-            if 0 <= card_number < len(cards) and card_number not in selected_cards and card_number not in matched_cards:
-                print(f"Flipping card {card_number + 1}")  # Debugging
-                selected_cards.append(card_number)
+            if 0 <= card_number < len(cards):
+                handle_card_selection(card_number)
                 action_taken = True
-
-                # Immediately process matches if two cards are selected
-                if len(selected_cards) == 2:
-                    if check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player):
-                        print("Match found!")  # Debugging
-                    else:
-                        print("No match.")  # Debugging
-
-                    selected_cards.clear()  # Prepare for the next selection
-                    action_taken = True
 
     return action_taken
 
 
-def check_for_match_and_update_state():
-    global selected_cards, matched_cards, scores, current_player
+def handle_card_selection(index):
+    global selected_cards, matched_cards, animation_in_progress, current_player, scores, num_players, card_animations
 
-    if len(selected_cards) == 2:
-        if cards[selected_cards[0]] == cards[selected_cards[1]]:
-            matched_cards.extend(selected_cards)
-            scores[current_player] += 1
-            print("Match found!")
+    if index not in selected_cards and index not in matched_cards:
+        if not animation_in_progress or len(selected_cards) < 2:
+            card_animations[index] = {'progress': 0, 'color': cards[index], 'state': 'REVEALED'}
+            selected_cards.append(index)
+            animation_in_progress = True
 
-        selected_cards = []
+            if len(selected_cards) == 2:
+                pygame.time.wait(500)  # This is blocking; consider revising for non-blocking delay
+                match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player)
+
+                if not match:
+                    pygame.time.set_timer(pygame.USEREVENT, 1000)
+                else:
+                    matched_cards.extend(selected_cards)
+                    scores[current_player] += 1
+                    selected_cards.clear()
+                    animation_in_progress = False
+
+                if not match and num_players == 2:
+                    current_player = 1 if current_player == 2 else 2
 
 
-def reset_game(colors, cols, rows, num_players):
+def reset_game(colors, cols, rows):
     cards = colors[:cols * rows // 2] * 2
     random.shuffle(cards)
 
@@ -269,7 +310,7 @@ def run_game():
     match_sound = pygame.mixer.Sound('match.wav')
     pygame.display.set_caption('Memory Game')
 
-    global voice_control_mode
+    global voice_control_mode, cards
     # Game settings
     screen_width, screen_height = 640, 480
     info_bar_height = 100  # Height of the information bar at the top
@@ -291,11 +332,6 @@ def run_game():
     font = pygame.font.SysFont("calibri", 26)  # Creates a default system font of size 36
     clock = pygame.time.Clock()  # Set up the clock for controlling frame rate
 
-    # Main menu call now returns whether Time Attack mode is selected
-    num_players, time_attack_mode, _ = main_menu(screen, font, text_color)
-    card_animations = {}  # Track animation state of cards
-    animation_in_progress = False
-
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
     difficulty = None
@@ -315,8 +351,9 @@ def run_game():
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
     card_width, card_height = screen_width // cols, game_area_height // rows
 
-    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows,
-                                                                                                     num_players)
+    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows)
+    # Main menu call now returns whether Time Attack mode is selected
+    num_players, time_attack_mode, voice_control_mode = main_menu(screen, font, text_color)
 
     # Define button sizes and positions
     button_padding_horizontal = 10
@@ -356,17 +393,17 @@ def run_game():
 
         # Modification: Added handling for updating the screen after voice command processing
         if voice_control_mode and process_voice_commands():  # Check if a command was processed and an action was taken
-            pygame.display.flip()  # Refresh the display to reflect any changes
-            # This ensures the screen is updated immediately after processing voice commands.
+            pygame.display.flip()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = event.pos
+
                 if play_again_visible and play_again_button_rect.collidepoint(mouse_x, mouse_y):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                     play_again_visible = False
                     continue
                 if not play_again_visible and reset_button_rect.collidepoint(event.pos):
@@ -378,43 +415,25 @@ def run_game():
                         row = (mouse_y - info_bar_height) // card_height
                         index = row * cols + col
 
-                        if 0 <= index < len(cards) and index not in selected_cards and index not in matched_cards:
-                            if not animation_in_progress:
-                                card_animations[index] = {'progress': 0, 'color': cards[index], 'state': REVEALED}
-                                selected_cards.append(index)
-                                animation_in_progress = True
-                                if len(selected_cards) == 2:
-                                    # Check for a match after a short delay
-                                    pygame.time.wait(
-                                        500)  # This will halt the game, consider revising as suggested earlier
-                                    match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
-                                                            current_player)
-                                    if not match:
-                                        # No match, start flip back animation after 1 second
-                                        pygame.time.set_timer(pygame.USEREVENT, 1000)
-                                    else:
-                                        # It's a match, update matched cards and scores
-                                        matched_cards.extend(selected_cards)
-                                        scores[current_player] += 1
-                                        selected_cards = []
-                                        animation_in_progress = False
-
-                                    # Switch player turns in 2 player mode if no match
-                                    if not match and num_players == 2:
-                                        current_player = 2 if current_player == 1 else 1
+                        if 0 <= index < len(cards):
+                            handle_card_selection(index)
 
             # Handle the event to flip cards back over
             if event.type == pygame.USEREVENT:
                 pygame.time.set_timer(pygame.USEREVENT, 0)  # Stop the timer
+
                 for idx in selected_cards:
                     card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': HIDDEN}
+
                 selected_cards = []
 
         # Time Attack mode logic
         if time_attack_mode and not game_over:
             current_time = pygame.time.get_ticks()
+
             if time_attack_start_time is None:
                 time_attack_start_time = current_time
+
             elapsed_time = (current_time - time_attack_start_time) // 1000
             remaining_time = time_attack_time_limit - elapsed_time
 
