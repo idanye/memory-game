@@ -6,12 +6,14 @@ import json
 import os
 import sounddevice as sd
 
+pygame.init()
+pygame.mixer.init()
+pygame.font.init()
+pygame.display.set_caption('Memory Game')
+match_sound = pygame.mixer.Sound('match.wav')
+
 # Load the VOSK model for offline speech recognition
 model_path = "vosk-model-small-en-us-0.15"
-if not os.path.exists(model_path):
-    print("Please download the model")
-    exit(1)
-
 model = Model(model_path)
 recognizer = KaldiRecognizer(model, 16000)
 
@@ -27,6 +29,7 @@ scores = {}
 card_animations = {}  # Track animation state of cards
 animation_in_progress = False
 num_players = 1
+
 
 # Function to initialize the microphone and recognizer
 def init_voice_recognition():
@@ -100,7 +103,7 @@ def process_voice_commands():
             print(f"{int(command)}: is a number = {command.isdigit()}")
 
         if command.isdigit():
-            card_number = int(command)
+            card_number = int(command) - 1
 
             if 0 <= card_number < len(cards):
                 handle_card_selection(card_number)
@@ -304,12 +307,6 @@ def main_menu(screen, font, text_color):
 
 
 def run_game():
-    pygame.init()
-    pygame.mixer.init()
-    pygame.font.init()
-    match_sound = pygame.mixer.Sound('match.wav')
-    pygame.display.set_caption('Memory Game')
-
     global voice_control_mode, cards
     # Game settings
     screen_width, screen_height = 640, 480
@@ -408,7 +405,7 @@ def run_game():
                     continue
                 if not play_again_visible and reset_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                 elif not play_again_visible:
                     if mouse_y > info_bar_height:
                         col = mouse_x // card_width
@@ -523,6 +520,7 @@ def run_game():
                 if animation['progress'] >= 1:
                     animation_in_progress = False
                     to_remove.append(index)
+
             elif animation['state'] == HIDDEN:
                 animation['progress'] += 0.01
 
