@@ -103,7 +103,7 @@ def reset_game(colors, cols, rows):
 
 
 def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-               info_bar_height, card_animations):
+               info_bar_height, card_animations, font):
     """
     Draws the cards on the screen, now accounting for animation states.
     """
@@ -125,6 +125,13 @@ def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_he
         rect = pygame.Rect(x, y, width, card_height)
         pygame.draw.rect(screen, color, rect)
         pygame.draw.rect(screen, (0, 0, 0), rect, 3)  # Draw card border
+
+        # Check if the card is not matched to draw its number
+        if index not in matched_cards:
+            # Calculate the position to draw the number. Adjust the positioning as needed.
+            number_text = font.render(str(index + 1), True, (255, 255, 255))
+            text_rect = number_text.get_rect(center=rect.center)
+            screen.blit(number_text, text_rect)
 
 
 def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player):
@@ -348,7 +355,7 @@ def run_game():
     while running:
         screen.fill(bg_color)
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-                   info_bar_height, card_animations)
+                   info_bar_height, card_animations, font)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
