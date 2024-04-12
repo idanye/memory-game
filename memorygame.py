@@ -1,8 +1,101 @@
 import pygame
 import random
+import threading
+from vosk import Model, KaldiRecognizer
+import os
+import sys
+import json
+import pyaudio
 
 
-def reset_game(colors, cols, rows, num_players):
+# Initialize global variables for voice control
+voice_command_queue = []
+voice_control_mode = False
+selected_cards = []
+cards = []
+matched_cards = []
+game_over = False
+current_player = 1
+scores = {1: 0, 2: 0}
+card_animations = {}  # Track animation state of cards
+animation_in_progress = False
+num_players = 1
+
+
+def voice_control_thread():
+    model_path = "vosk-model-small-en-us-0.15"
+    if not os.path.exists(model_path):
+        print("Please download the model from https://alphacephei.com/vosk/models and unpack as 'model' in the "
+              "current folder.")
+        sys.exit(1)
+
+    model = Model(model_path)
+    recognizer = KaldiRecognizer(model, 16000)
+
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=4096)
+    stream.start_stream()
+
+    while True:
+        data = stream.read(4096)
+        if recognizer.AcceptWaveform(data):
+            result = json.loads(recognizer.Result())
+            command = result.get('text', '').strip().lower()
+
+            if command:
+                print(f"Appended command: {command}")
+                voice_command_queue.append(command)
+
+
+# Modified to return a boolean indicating whether an action was taken
+def process_voice_commands():
+    number_words_to_digits = {
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+        "six": "6",
+        "seven": "7",
+        "eight": "8",
+        "nine": "9",
+        "ten": "10",
+        "eleven": "11",
+        "twelve": "12",
+        "thirteen": "13",
+        "fourteen": "14",
+        "fifteen": "15",
+        "sixteen": "16",
+        "seventeen": "17",
+        "eighteen": "18",
+        "nineteen": "19",
+        "twenty": "20"
+    }
+    action_taken = False  # Flag to track if any action was taken based on a voice command
+
+    while voice_command_queue:
+        command = voice_command_queue.pop(0).strip().lower()
+        print(f"Processing command: {command}")
+
+        # Convert number words to digits
+        if command in number_words_to_digits:
+            command = number_words_to_digits[command]
+
+            print(f"{int(command)}: is a number = {command.isdigit()}")
+
+        if command.isdigit():
+            card_number = int(command) - 1
+
+            if 0 <= card_number < len(cards):
+                selected_cards.append(card_number)
+                action_taken = True
+
+    return action_taken
+
+
+def reset_game(colors, cols, rows):
+    global cards
+
     cards = colors[:cols * rows // 2] * 2
     random.shuffle(cards)
 
@@ -98,25 +191,31 @@ def main_menu(screen, font, text_color):
     one_player_text = font.render('1 Player', True, text_color)
     two_player_text = font.render('2 Players', True, text_color)
     time_attack_text = font.render('Time Attack', True, text_color)
+    voice_control_text = font.render('Voice Control', True, text_color)
 
     # Calculate button widths based on text widths
     one_player_button_width = one_player_text.get_width() + button_padding_horizontal
     two_player_button_width = two_player_text.get_width() + button_padding_horizontal
     time_attack_button_width = time_attack_text.get_width() + button_padding_horizontal
+    voice_control_button_width = voice_control_text.get_width() + button_padding_horizontal
 
     # Calculate the total width for all buttons and spaces between them
-    total_buttons_width = one_player_button_width + two_player_button_width + time_attack_button_width + 2 * button_spacing
+    total_buttons_width = (one_player_button_width + two_player_button_width + time_attack_button_width
+                           + voice_control_button_width + 3 * button_spacing)
 
     # Calculate the starting x position to center the buttons
     start_x_position = (screen.get_width() - total_buttons_width) // 2
 
-    # Define the buttons with the new calculated positions and widths
+    # Define the buttons with the new calculated positions and widths, moving Time Attack to the left
     time_attack_button = pygame.Rect(start_x_position, 240 - 25, time_attack_button_width, 50)
     one_player_button = pygame.Rect(start_x_position + time_attack_button_width + button_spacing, 240 - 25,
                                     one_player_button_width, 50)
     two_player_button = pygame.Rect(
         start_x_position + time_attack_button_width + one_player_button_width + 2 * button_spacing, 240 - 25,
         two_player_button_width, 50)
+    voice_control_button = pygame.Rect(
+        start_x_position + time_attack_button_width + one_player_button_width + two_player_button_width + 3 * button_spacing,
+        240 - 25, voice_control_button_width, 50)
 
     screen.fill((255, 255, 255))
 
@@ -125,16 +224,19 @@ def main_menu(screen, font, text_color):
     pygame.draw.rect(screen, button_color, one_player_button)
     pygame.draw.rect(screen, button_color, two_player_button)
     pygame.draw.rect(screen, button_color, time_attack_button)
+    pygame.draw.rect(screen, button_color, voice_control_button)
 
     # Blit the button text centered in the buttons
     screen.blit(one_player_text, one_player_text.get_rect(center=one_player_button.center))
     screen.blit(two_player_text, two_player_text.get_rect(center=two_player_button.center))
     screen.blit(time_attack_text, time_attack_text.get_rect(center=time_attack_button.center))
+    screen.blit(voice_control_text, voice_control_text.get_rect(center=voice_control_button.center))
 
     pygame.display.flip()
 
     num_players = None
     time_attack = False
+    voice_control = False  # Variable to track if voice control mode is selected
 
     while not num_players:
         for event in pygame.event.get():
@@ -149,11 +251,16 @@ def main_menu(screen, font, text_color):
                 elif time_attack_button.collidepoint(event.pos):
                     num_players = 1  # Time Attack mode is a kind of single-player mode
                     time_attack = True
+                elif voice_control_button.collidepoint(event.pos):
+                    num_players = 1
+                    voice_control = True  # Set voice control mode to True when selected
 
-    return num_players, time_attack
+    return num_players, time_attack, voice_control
 
 
 def run_game():
+    global voice_command_queue, voice_control_mode, selected_cards, cards, matched_cards, game_over, current_player, \
+        scores, card_animations, animation_in_progress, num_players
     pygame.init()
     pygame.mixer.init()
     pygame.font.init()
@@ -181,8 +288,6 @@ def run_game():
     font = pygame.font.SysFont("calibri", 24)  # Creates a default system font of size 36
     clock = pygame.time.Clock()  # Setup the clock for controlling frame rate
 
-    # Main menu call now returns whether Time Attack mode is selected
-    num_players, time_attack_mode = main_menu(screen, font, text_color)
     card_animations = {}  # Track animation state of cards
 
     # Difficulty selection
@@ -204,7 +309,9 @@ def run_game():
     cols, rows = {"Easy": (3, 4), "Medium": (4, 4), "Hard": (5, 4)}[difficulty]
     card_width, card_height = screen_width // cols, game_area_height // rows
 
-    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows, num_players)
+    cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(colors, cols, rows)
+    # Main menu call now returns whether Time Attack mode is selected
+    num_players, time_attack_mode, voice_control_mode = main_menu(screen, font, text_color)
 
     # Define button sizes and positions
     button_padding_horizontal = 10
@@ -223,6 +330,11 @@ def run_game():
     play_again_button_rect = pygame.Rect(screen_width - play_again_button_width - 10,
                                          (info_bar_height - play_again_button_height) // 2 + 25,
                                          play_again_button_width, play_again_button_height)  # Adjusted position
+
+    if voice_control_mode:
+        voice_thread = threading.Thread(target=voice_control_thread, args=())
+        voice_thread.daemon = True
+        voice_thread.start()
 
     # Main game loop
     running = True
@@ -245,12 +357,12 @@ def run_game():
                 mouse_x, mouse_y = event.pos
                 if play_again_visible and play_again_button_rect.collidepoint(mouse_x, mouse_y):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                     play_again_visible = False
                     continue
                 if not play_again_visible and reset_button_rect.collidepoint(event.pos):
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                 elif not play_again_visible:
                     if mouse_y > info_bar_height:
                         col = mouse_x // card_width
@@ -267,6 +379,17 @@ def run_game():
                                                         current_player)
                                 if not match and num_players == 2:
                                     current_player = 2 if current_player == 1 else 1  # Change
+
+        # Process voice commands if in voice control mode
+        if voice_control_mode and not animation_in_progress:
+            if process_voice_commands():
+                # If a command was processed, handle card selection and check for matches
+                if len(selected_cards) == 2:
+                    pygame.time.wait(500)  # Short pause to show cards before checking for a match
+                    match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores,
+                                            current_player)
+                    if not match and num_players == 2:
+                        current_player = 2 if current_player == 1 else 1  # Switch players in 2 player mode
 
         # Time Attack mode logic
         if time_attack_mode and not game_over:
@@ -292,7 +415,7 @@ def run_game():
                     # Reset the game for Time Attack with a reduced time limit
                     time_attack_time_limit = max(10, time_attack_time_limit - time_attack_time_decrement)
                     cards, selected_cards, matched_cards, game_over, start_time, current_player, scores = reset_game(
-                        colors, cols, rows, num_players)
+                        colors, cols, rows)
                     time_attack_start_time = pygame.time.get_ticks()  # Restart the time attack timer
                     play_again_visible = False  # We're starting a new round, so hide the play again button
                 else:
