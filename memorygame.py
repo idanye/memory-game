@@ -178,7 +178,7 @@ def run_game():
         (0, 0, 64), (64, 64, 0), (64, 0, 64), (0, 64, 64)
     ]
 
-    font = pygame.font.SysFont("calibri", 36)  # Creates a default system font of size 36
+    font = pygame.font.SysFont("calibri", 24)  # Creates a default system font of size 36
     clock = pygame.time.Clock()  # Setup the clock for controlling frame rate
 
     # Main menu call now returns whether Time Attack mode is selected
