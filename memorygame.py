@@ -24,10 +24,16 @@ cards = []
 matched_cards = []
 game_over = False
 current_player = 1
-scores = {}
+scores = {1: 0, 2: 0}
 card_animations = {}  # Track animation state of cards
 animation_in_progress = False
+animation_update_speed = 0.005  # Decrease this value to slow down the animation
 num_players = 1
+# Constants for card states
+HIDDEN = 0
+REVEALED = 1
+match = False
+running = True
 
 # Game settings
 screen_width, screen_height = 640, 480
@@ -53,37 +59,26 @@ clock = pygame.time.Clock()  # Set up the clock for controlling frame rate
 
 # Function to initialize the microphone and recognizer
 def init_voice_recognition():
-    print("Initializing voice recognition...")
-
     def callback(indata, frames, time, status):
-        # Directly print status to handle errors or messages
-        if status:
-            print("Status:", status)
-
-        # Process audio buffer
         if recognizer.AcceptWaveform(indata.tobytes()):
             result = json.loads(recognizer.Result())
-            command = result.get('text', '').strip().lower()
-
+            command = result.get('text', '').lower().strip()
             if command:
-                print("Recognized command:", command)
                 voice_command_queue.append(command)
-        else:
-            # Print partial results for immediate feedback
-            partial = json.loads(recognizer.PartialResult())
 
-            if partial.get('partial'):
-                print("Partial recognition:", partial['partial'])
+    try:
+        with sd.InputStream(callback=callback, dtype='int16', channels=1, samplerate=16000):
+            print("Voice recognition active. Speak now.")
+            while True:
+                pass  # Keep the stream alive until the game ends
 
-    def start_stream():
-        try:
-            stream = sd.InputStream(callback=callback, dtype='int16', channels=1, samplerate=16000)
-            stream.start()
-            print("Voice recognition initialized and listening...")
-        except Exception as e:
-            print(f"Failed to initialize voice recognition: {e}")
+    except Exception as e:
+        print(f"Voice recognition error: {e}")
 
-    threading.Thread(target=start_stream).start()
+
+# Correct place to start the voice recognition thread
+voice_thread = threading.Thread(target=init_voice_recognition, daemon=True)
+voice_thread.start()
 
 
 # Modified to return a boolean indicating whether an action was taken
@@ -133,21 +128,18 @@ def process_voice_commands():
 
 
 def match_check_and_handle():
-    global selected_cards, matched_cards, scores, current_player, animation_in_progress
+    global selected_cards, matched_cards, scores, current_player, animation_in_progress, match
 
-    # Perform match checking
-    match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player)
+    if len(selected_cards) == 2:
+        # Perform match checking
+        match = check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player)
 
-    if match:
-        matched_cards.extend(selected_cards)
-        scores[current_player] += 1
-    else:
-        # Schedule cards to flip back
-        for idx in selected_cards:
-            card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': 'HIDDEN'}
+        if match:
+            matched_cards.extend(selected_cards)
+            scores[current_player] += 1
+            selected_cards.clear()  # Clear only on match to prevent immediate reset.
 
-    selected_cards.clear()
-    animation_in_progress = False
+        animation_in_progress = False
 
     # Handle turn switching here if needed
     if not match and num_players == 2:
@@ -157,18 +149,16 @@ def match_check_and_handle():
 def handle_card_selection(index):
     global selected_cards, matched_cards, animation_in_progress, current_player, scores, num_players, card_animations
 
-    if len(selected_cards) < 2 and index not in selected_cards and index not in matched_cards:
-        card_animations[index] = {'progress': 0, 'color': cards[index], 'state': 'REVEALED'}
+    if index in selected_cards or index in matched_cards:
+        return  # Card already selected or matched, do nothing
+
+    if len(selected_cards) < 2:
+        card_animations[index] = {'progress': 0, 'color': cards[index], 'state': REVEALED}
         selected_cards.append(index)
 
-        # Only mark animation as in progress if it's the first card being selected.
-        if len(selected_cards) == 1:
-            animation_in_progress = True
-
-    if len(selected_cards) == 2 and not animation_in_progress:
-        # Use a timer event for non-blocking delay, allowing animations to proceed.
-        pygame.time.set_timer(pygame.USEREVENT + 1, 500)  # 500 milliseconds until the event triggers
-        match_check_and_handle()
+    if len(selected_cards) == 2:
+        # Delay match checking by setting a timer, do not reset animation_in_progress here
+        pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # 1500 milliseconds delay
 
 
 def reset_game(colors, cols, rows):
@@ -205,7 +195,8 @@ def draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_he
         # Draw card number if not yet selected or matched
         if index not in matched_cards and index not in selected_cards:
             card_number = font.render(str(index + 1), True, (255, 255, 255))  # Assuming white numbers
-            screen.blit(card_number, (x + card_width / 2 - card_number.get_width() / 2, y + card_height / 2 - card_number.get_height() / 2))
+            screen.blit(card_number, (
+            x + card_width / 2 - card_number.get_width() / 2, y + card_height / 2 - card_number.get_height() / 2))
 
 
 def check_for_match(cards, selected_cards, matched_cards, match_sound, scores, current_player):
@@ -335,13 +326,12 @@ def main_menu(screen, font, text_color):
                 elif voice_control_button.collidepoint(event.pos):
                     num_players = 1
                     voice_control = True  # Set voice control mode to True when selected
-                    init_voice_recognition()
 
     return num_players, time_attack, voice_control
 
 
 def run_game():
-    global voice_control_mode, cards
+    global voice_control_mode, cards, running, animation_in_progress
 
     # Difficulty selection
     difficulty_rects = display_difficulty_selection(screen, font, text_color)
@@ -385,7 +375,6 @@ def run_game():
                                          play_again_button_width, play_again_button_height)  # Adjusted position
 
     # Main game loop
-    running = True
     end_time = None
     play_again_visible = False
     # Initialize Time Attack mode variables
@@ -393,24 +382,13 @@ def run_game():
     time_attack_time_decrement = 5
     time_attack_start_time = None
 
-    # Constants for card states
-    HIDDEN = 0
-    REVEALED = 1
-
-    while running:
+    while not game_over:
         screen.fill(bg_color)
-        # draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-        #            info_bar_height, card_animations, font)
-
-        # Modification: Added handling for updating the screen after voice command processing
-        if voice_control_mode and process_voice_commands():  # Check if a command was processed and an action was taken
-            # pygame.display.flip()
-            pass
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+                game_over = True
+            elif event.type == pygame.MOUSEBUTTONDOWN and (not animation_in_progress or voice_control_mode):
                 mouse_x, mouse_y = event.pos
 
                 if play_again_visible and play_again_button_rect.collidepoint(mouse_x, mouse_y):
@@ -431,13 +409,21 @@ def run_game():
                             handle_card_selection(index)
 
             # Handle the event to flip cards back over
-            if event.type == pygame.USEREVENT:
-                pygame.time.set_timer(pygame.USEREVENT, 0)  # Stop the timer
+            if event.type == pygame.USEREVENT + 1:
+                match_check_and_handle()
 
-                for idx in selected_cards:
-                    card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': HIDDEN}
+                if not match:
+                    for idx in selected_cards:
+                        card_animations[idx] = {'progress': 0, 'color': hidden_color, 'state': HIDDEN}
 
-                selected_cards = []
+                selected_cards.clear()
+                pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # Stop the timer
+
+        # Modification: Added handling for updating the screen after voice command processing
+        if voice_control_mode and process_voice_commands():  # Check if a command was processed and an action was taken
+            # This ensures we give time to see the second card before checking for a match
+            pass
+            # pygame.time.set_timer(pygame.USEREVENT + 1, 1500)  # Delay before flipping back if no match
 
         # Time Attack mode logic
         if time_attack_mode and not game_over:
@@ -531,13 +517,13 @@ def run_game():
 
         for index, animation in card_animations.items():
             if animation['state'] == REVEALED:
-                animation['progress'] += 0.01
+                animation['progress'] += animation_update_speed
                 if animation['progress'] >= 1:
                     animation_in_progress = False
                     to_remove.append(index)
 
             elif animation['state'] == HIDDEN:
-                animation['progress'] += 0.01
+                animation['progress'] += animation_update_speed
 
                 if animation['progress'] >= 1:
                     matched_cards.remove(index)  # Remove from matched_cards if it's not a match
@@ -547,7 +533,7 @@ def run_game():
             del card_animations[index]
 
         draw_cards(screen, cards, selected_cards, matched_cards, card_width, card_height, cols, hidden_color,
-                              info_bar_height, card_animations, font)
+                   info_bar_height, card_animations, font)
         pygame.display.flip()
         clock.tick(60)  # Maintain a steady frame rate
 
@@ -555,4 +541,7 @@ def run_game():
 
 
 if __name__ == "__main__":
-    run_game()
+    try:
+        run_game()
+    except Exception as e:
+        print(f"Error: {e}")
